@@ -13,10 +13,10 @@ INJECTION = re.compile(
     r"disregard (your|all) (rules|instructions)|jailbreak|\bDAN\b|act as (an? )?(unrestricted|unfiltered)|reveal (your|the) (prompt|instructions))",
     re.I,
 )
-PII = [
+PII = [  # most specific first: an SSN also matches the looser phone pattern
     ("email", re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")),
-    ("phone", re.compile(r"(\+?\d[\d\s().-]{8,}\d)")),
     ("ssn", re.compile(r"\b\d{3}-\d{2}-\d{4}\b")),
+    ("phone", re.compile(r"(\+?\d[\d\s().-]{8,}\d)")),
 ]
 DOMAIN = re.compile(
     r"\b(house|home|homes|property|properties|bungalow|ranch|condo|townhouse|duplex|bed|beds|bedroom|bedrooms|bath|baths|bathroom|"

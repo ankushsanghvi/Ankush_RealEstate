@@ -34,10 +34,11 @@ and trains the pricing model (~2 s); all three are cached under `data/cache/`.
 
 ```bash
 pip install -r requirements-eval.txt
-pytest -q                               # 10 API tests
+pytest -q                               # 44 tests (API, edge cases, guardrails, vector store, LLM wrapper)
 python evals/build_golden_set.py        # regenerate the 60-case golden set (deterministic seed)
 python evals/run_eval.py                # built-in metrics, no key; exit 1 on threshold regression
-python evals/run_deepeval.py            # DeepEval LLM-graded suite (needs ANTHROPIC_API_KEY)
+python evals/benchmark_embeddings.py    # compare 4 embedding models on the golden set, no key
+python evals/run_deepeval.py 10         # DeepEval LLM-graded suite, first 10 cases (needs ANTHROPIC_API_KEY)
 ```
 
 ## Layout
@@ -50,11 +51,11 @@ app/
   schemas.py       Pydantic contracts (mirror frontend/src/lib/types.ts)
   config.py        env-driven settings
   data/loader.py   ARFF → typed records + NL property cases + neighborhood stats
-  retrieval/       embedder (fastembed | LSA), hybrid index (BM25 ∪ dense, RRF, filters)
+  retrieval/       embedder (fastembed | LSA), FAISS vector store, hybrid index (BM25 ∪ dense, RRF, filters)
   agents/          llm, guardrails, classifier, comparables, pricing, impact, risk, valuer, judge
   feedback.py      SQLite request log + feedback + corrected cases
   evaluation.py    serves evals/results/latest.json
-evals/             golden set builder, built-in runner, DeepEval runner, results/
-tests/             pytest API suite
+evals/             golden set builder, built-in runner, embedding benchmark, DeepEval runner, results/
+tests/             pytest suite (API, edge cases)
 Dockerfile, render.yaml
 ```

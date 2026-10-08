@@ -40,11 +40,7 @@ export function Hero() {
   });
 
   return (
-    <section className="grain relative overflow-hidden pt-36 pb-20 sm:pt-44 sm:pb-28">
-      {/* ambient orbs */}
-      <div className="orb -left-24 top-10 h-[420px] w-[420px] bg-[color:var(--accent-soft)]" />
-      <div className="orb right-[-120px] top-[140px] h-[520px] w-[520px] bg-[color:var(--sky-soft)]" style={{ animationDelay: "-6s" }} />
-      <div className="orb bottom-[-200px] left-1/3 h-[480px] w-[480px] bg-[color:var(--sage-soft)]" style={{ animationDelay: "-11s" }} />
+    <section className="relative overflow-hidden pt-36 pb-20 sm:pt-44 sm:pb-28">
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
         <div className="grid items-center gap-14 lg:grid-cols-[1.1fr_0.9fr]">
@@ -72,9 +68,9 @@ export function Hero() {
               </Button>
             </motion.div>
             <motion.div {...fade(0.4)} className="mt-10 flex flex-wrap gap-x-7 gap-y-3 text-[13px] text-ink-3">
-              <span className="inline-flex items-center gap-2"><ShieldCheck size={15} className="text-sage" /> Input guardrails on every request</span>
-              <span className="inline-flex items-center gap-2"><Scale size={15} className="text-sage" /> LLM-as-judge validation</span>
-              <span className="inline-flex items-center gap-2"><Sparkles size={15} className="text-sage" /> DeepEval scored nightly</span>
+              <span className="inline-flex items-center gap-2"><ShieldCheck size={15} className="text-accent" /> Input guardrails on every request</span>
+              <span className="inline-flex items-center gap-2"><Scale size={15} className="text-accent" /> LLM-as-judge validation</span>
+              <span className="inline-flex items-center gap-2"><Sparkles size={15} className="text-accent" /> DeepEval scored nightly</span>
             </motion.div>
           </div>
 
@@ -85,6 +81,8 @@ export function Hero() {
             transition={{ duration: 1.1, delay: 0.25, ease }}
             className="relative"
           >
+            {/* arch backdrop */}
+            <div aria-hidden className="absolute -inset-x-6 -top-10 bottom-[-40px] hidden rounded-t-full bg-sky-soft lg:block" />
             <div className="card relative overflow-hidden rounded-[22px] p-5 shadow-lg">
               <div className="flex items-center justify-between">
                 <span className="eyebrow">Live query</span>

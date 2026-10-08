@@ -1,0 +1,94 @@
+{
+  "cases": 55,
+  "topK": 10,
+  "filters": "none",
+  "results": [
+    {
+      "encoder": "LSA (TF-IDF \u2192 SVD, 256-d)",
+      "id": "lsa:tfidf-svd-256",
+      "dim": 256,
+      "indexS": 1.4,
+      "dense": {
+        "precision@10": 0.5655,
+        "hit@3": 0.8,
+        "mrr": 0.7229,
+        "compAPE": 0.2048,
+        "queryMs": 4.6
+      },
+      "hybrid": {
+        "precision@10": 0.6473,
+        "hit@3": 0.8545,
+        "mrr": 0.8071,
+        "compAPE": 0.1831,
+        "queryMs": 4.6
+      }
+    },
+    {
+      "encoder": "all-MiniLM-L6-v2 (384-d)",
+      "id": "fastembed:sentence-transformers/all-MiniLM-L6-v2",
+      "dim": 384,
+      "indexS": 44.3,
+      "dense": {
+        "precision@10": 0.5345,
+        "hit@3": 0.6909,
+        "mrr": 0.6949,
+        "compAPE": 0.2665,
+        "queryMs": 6.9
+      },
+      "hybrid": {
+        "precision@10": 0.6364,
+        "hit@3": 0.7818,
+        "mrr": 0.7717,
+        "compAPE": 0.2104,
+        "queryMs": 7.0
+      }
+    },
+    {
+      "encoder": "bge-small-en-v1.5 (384-d)",
+      "id": "fastembed:BAAI/bge-small-en-v1.5",
+      "dim": 384,
+      "indexS": 0.1,
+      "dense": {
+        "precision@10": 0.6491,
+        "hit@3": 0.8364,
+        "mrr": 0.7526,
+        "compAPE": 0.1908,
+        "queryMs": 10.3
+      },
+      "hybrid": {
+        "precision@10": 0.6582,
+        "hit@3": 0.8727,
+        "mrr": 0.7733,
+        "compAPE": 0.1835,
+        "queryMs": 10.4
+      }
+    },
+    {
+      "encoder": "bge-base-en-v1.5 (768-d)",
+      "id": "fastembed:BAAI/bge-base-en-v1.5",
+      "dim": 768,
+      "indexS": 203.3,
+      "dense": {
+        "precision@10": 0.6273,
+        "hit@3": 0.7818,
+        "mrr": 0.7417,
+        "compAPE": 0.1863,
+        "queryMs": 26.8
+      },
+      "hybrid": {
+        "precision@10": 0.6345,
+        "hit@3": 0.8182,
+        "mrr": 0.7148,
+        "compAPE": 0.1919,
+        "queryMs": 26.3
+      }
+    }
+  ],
+  "bm25Only": {
+    "precision@10": 0.6582,
+    "hit@3": 0.8727,
+    "mrr": 0.758,
+    "compAPE": 0.198,
+    "queryMs": 4.7
+  }
+}

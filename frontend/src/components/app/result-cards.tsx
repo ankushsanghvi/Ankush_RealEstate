@@ -335,7 +335,7 @@ export function FeedbackCard({ r }: { r: QueryResponse }) {
       <CardBody className="space-y-3">
         <div className="flex gap-2">
           <button onClick={() => setRating("up")} className={cn("inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border text-[13px] transition-colors", rating === "up" ? "border-sage bg-sage-soft text-ink" : "border-line text-ink-2 hover:bg-surface-2")}><ThumbsUp size={14} /> Helpful</button>
-          <button onClick={() => setRating("down")} className={cn("inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border text-[13px] transition-colors", rating === "down" ? "border-serious bg-[rgba(236,131,90,0.12)] text-ink" : "border-line text-ink-2 hover:bg-surface-2")}><ThumbsDown size={14} /> Off</button>
+          <button onClick={() => setRating("down")} className={cn("inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border text-[13px] transition-colors", rating === "down" ? "border-serious bg-[color:var(--serious-soft)] text-ink" : "border-line text-ink-2 hover:bg-surface-2")}><ThumbsDown size={14} /> Off</button>
         </div>
         {rating && (
           <>

@@ -1,7 +1,8 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><title>Valora architecture</title>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <style>
+  @page{size:1600px 1040px;margin:0}
   body{margin:0;background:#f7f6f2;font-family:Geist,system-ui,sans-serif;color:#141413}
   .page{width:1600px;height:1040px;padding:48px 56px;box-sizing:border-box;position:relative}
   h1{font-family:"Instrument Serif",serif;font-weight:400;font-size:40px;margin:0;letter-spacing:-.01em}
@@ -9,71 +10,88 @@
   .sub{color:#4a4945;font-size:14px;margin-top:6px}
   .lane{position:absolute;left:56px;right:56px;border:1px solid rgba(20,20,19,.1);border-radius:18px;background:#fffefb;box-shadow:0 1px 2px rgba(0,0,0,.04)}
   .lane .t{position:absolute;top:-11px;left:18px;background:#fffefb;padding:0 8px;font-family:"Geist Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#807e77}
-  .box{position:absolute;border-radius:12px;padding:10px 12px;box-sizing:border-box;font-size:12.5px;line-height:1.35;border:1px solid rgba(20,20,19,.1);background:#f3f1ea}
+  .box{position:absolute;border-radius:12px;padding:10px 12px;box-sizing:border-box;font-size:12.5px;line-height:1.35;border:1px solid rgba(20,20,19,.1);background:#f3f1ea;overflow:hidden}
   .box b{display:block;font-weight:600;font-size:13px;margin-bottom:2px}
   .box small{color:#4a4945}
   .acc{background:#f7e6de;border-color:#e8c9bb}.sage{background:#e3eee6;border-color:#c5dccb}.sky{background:#e1e9f6;border-color:#c4d3ea}.sun{background:#f6ecd4;border-color:#e8d9ae}.dark{background:#141413;color:#f7f6f2;border-color:#141413}.dark small{color:#c3c2b7}
+  .ghost{background:transparent;border-style:dashed}
   svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
   .arrow{stroke:#807e77;stroke-width:1.6;fill:none;marker-end:url(#m)}
+  .line{stroke:#807e77;stroke-width:1.6;fill:none}
   .loop{stroke:#b85c3c;stroke-width:1.6;fill:none;stroke-dasharray:5 4;marker-end:url(#ma)}
-  .lbl{font-size:10.5px;fill:#807e77;font-family:Geist Mono,ui-monospace,monospace}
+  .lbl{font-size:10.5px;fill:#807e77;font-family:"Geist Mono",ui-monospace,monospace}
+  .lbl.acc{fill:#b85c3c}
   .legend{position:absolute;right:56px;top:56px;font-size:11.5px;color:#4a4945;display:flex;gap:14px}
   .legend span{display:inline-flex;align-items:center;gap:6px}.sw{width:12px;height:12px;border-radius:3px;border:1px solid rgba(0,0,0,.1)}
 </style></head><body><div class="page">
 <h1>Valora — <em>system architecture</em></h1>
 <div class="sub">AI-powered property valuation assistant · Ames Housing (2,930 sales) → hybrid retrieval → multi-agent valuation → validated answer</div>
-<div class="legend"><span><i class="sw" style="background:#f3f1ea"></i>deterministic</span><span><i class="sw" style="background:#f7e6de"></i>LLM (Claude) with rule fallback</span><span><i class="sw" style="background:#e3eee6"></i>validation</span><span><i class="sw" style="background:#e1e9f6"></i>models</span><span><i class="sw" style="background:#141413"></i>client</span></div>
+<div class="legend"><span><i class="sw" style="background:#f3f1ea"></i>deterministic</span><span><i class="sw" style="background:#f7e6de"></i>LLM (Claude) with rule fallback</span><span><i class="sw" style="background:#e3eee6"></i>validation</span><span><i class="sw" style="background:#e1e9f6"></i>models &amp; indexes</span><span><i class="sw" style="background:#141413"></i>client</span></div>
 
 <!-- Lane 1: offline ingestion -->
-<div class="lane" style="top:140px;height:180px"><span class="t">01 · Offline ingestion (startup, cached by data hash)</span></div>
-<div class="box" style="left:80px;top:170px;width:170px"><b>Ames Housing ARFF</b><small>OpenML 43926 · 81 cols · 2,930 rows</small></div>
-<div class="box" style="left:290px;top:170px;width:190px"><b>Loader</b><small>type &amp; map codes, drop partial-sale outliers, neighborhood stats</small></div>
-<div class="box" style="left:520px;top:170px;width:200px"><b>Property case text</b><small>NL summary per record: beds, sqft, built, quality, nbhd (code + name)</small></div>
-<div class="box" style="left:520px;top:244px;width:200px"><b>Numeric feature frame</b><small>12 key fields + neighborhood $/sqft &amp; median</small></div>
-<div class="box sky" style="left:760px;top:160px;width:200px"><b>Dense index</b><small>fastembed bge-small-en (384-d) · numpy cosine · LSA fallback</small></div>
-<div class="box sky" style="left:760px;top:244px;width:200px"><b>BM25 index</b><small>rank-bm25 · tokens + nbhd expansion</small></div>
-<div class="box sky" style="left:1000px;top:160px;width:220px"><b>Pricing model</b><small>HistGradientBoosting on log(price) · 5-fold CV MAPE 9.5%, R² 0.89</small></div>
-<div class="box sky" style="left:1000px;top:244px;width:220px"><b>Hedonic OLS</b><small>log-linear elasticities + neighborhood fixed effects (R² 0.90)</small></div>
-<div class="box" style="left:1260px;top:195px;width:260px"><b>Metadata store</b><small>neighborhood, year, beds, sqft, quality, price → hard filters; SQLite for requests &amp; feedback</small></div>
+<div class="lane" style="top:140px;height:232px"><span class="t">01 · Offline ingestion · dataset → preprocessing → chunking → embeddings → vector DB</span></div>
+<div class="box" style="left:80px;top:172px;width:170px;height:72px"><b>Ames Housing ARFF</b><small>OpenML 43926 · 81 cols · 2,930 rows</small></div>
+<div class="box" style="left:290px;top:172px;width:190px;height:72px"><b>Preprocessing</b><small>type &amp; map codes, drop outliers, neighborhood stats</small></div>
+<div class="box" style="left:520px;top:172px;width:200px;height:72px"><b>Chunking · property cases</b><small>1 record = 1 chunk · NL summary of beds, sqft, built, quality, nbhd</small></div>
+<div class="box sky" style="left:760px;top:172px;width:200px;height:72px"><b>Embeddings → FAISS</b><small>bge-small-en-v1.5 (384-d) · exact-cosine vector DB</small></div>
+<div class="box sky" style="left:1000px;top:172px;width:200px;height:72px"><b>BM25 keyword index</b><small>rank-bm25 · tokens + neighborhood-name expansion</small></div>
+<div class="box ghost" style="left:1240px;top:172px;width:280px;height:72px"><b>Startup cache</b><small>embeddings &amp; models cached by data hash · cold start ≈40 s, warm &lt;1 s</small></div>
+<div class="box" style="left:520px;top:268px;width:200px;height:72px"><b>Numeric feature frame</b><small>12 key fields + neighborhood $/sqft &amp; median</small></div>
+<div class="box sky" style="left:760px;top:268px;width:200px;height:72px"><b>Pricing model</b><small>HistGradientBoosting · CV MAPE 9.5%, R² 0.89</small></div>
+<div class="box sky" style="left:1000px;top:268px;width:200px;height:72px"><b>Hedonic OLS</b><small>log-linear elasticities + nbhd fixed effects</small></div>
+<div class="box" style="left:1240px;top:268px;width:280px;height:72px"><b>Metadata store</b><small>nbhd, year, beds, sqft, quality, price → hard filters · SQLite for requests</small></div>
 
 <!-- Lane 2: online request graph -->
-<div class="lane" style="top:345px;height:330px"><span class="t">02 · Online request · typed state graph (FastAPI · each node traced with duration, tool, output)</span></div>
-<div class="box dark" style="left:80px;top:435px;width:150px"><b>Next.js UI</b><small>Vercel · query + filters · demo-mode fallback</small></div>
-<div class="box sage" style="left:270px;top:435px;width:150px"><b>Guardrail</b><small>length · injection · PII redaction · domain · attribute clamp</small></div>
-<div class="box acc" style="left:460px;top:435px;width:160px"><b>Classifier</b><small>intent · property type · attributes (structured output) + regex back-fill</small></div>
-<div class="box" style="left:660px;top:435px;width:160px"><b>Retriever</b><small>BM25 ∪ dense → RRF fusion → metadata filter → 40 candidates</small></div>
-<div class="box" style="left:860px;top:435px;width:170px"><b>Comp Analyst</b><small>prioritize (nbhd, ±10% area, ±8 yrs, quality) · appraisal adjustments</small></div>
-<div class="box sky" style="left:1070px;top:380px;width:170px"><b>Pricing Model</b><small>prediction + 90% interval + feature contributions</small></div>
-<div class="box acc" style="left:1070px;top:490px;width:170px"><b>Valuer</b><small>ensemble (comps ⊕ ML) · range · confidence · narrative</small></div>
-<div class="box" style="left:1280px;top:380px;width:150px"><b>Risk Analyst</b><small>dispersion · coverage · divergence · volatility → 0-100</small></div>
-<div class="box sage" style="left:1280px;top:490px;width:150px"><b>Judge</b><small>5 criteria · approve / flag / reject · independent prompt</small></div>
-<div class="box" style="left:1460px;top:435px;width:60px;text-align:center"><b>⇢</b><small>JSON</small></div>
-<div class="box" style="left:270px;top:590px;width:780px;background:#fffefb"><b>Response envelope</b><small>requestId · engine (llm | rules | llm-degraded) · guardrails · classification · comparables (scores, reasons, adjustments) · valuation · prediction · judge · risk · impact · agentTrace · answer</small></div>
-<div class="box sun" style="left:1070px;top:590px;width:360px"><b>Fallback chain</b><small>Opus 5.5 → Sonnet 5.5 → rules · fastembed → LSA · API down → UI demo data (labelled)</small></div>
+<div class="lane" style="top:400px;height:330px"><span class="t">02 · Online · FastAPI → LLM / RAG agent graph</span></div>
+<div class="box sun" style="left:80px;top:420px;width:600px;height:54px"><b>Fallback chain</b><small>Claude Haiku 4.5 → Sonnet 4.6 → rules · fastembed → LSA · API down → labelled demo data</small></div>
+<div class="box dark" style="left:80px;top:490px;width:150px;height:84px"><b>Next.js UI</b><small>query + filters · evidence views · feedback</small></div>
+<div class="box sage" style="left:270px;top:490px;width:150px;height:84px"><b>Guardrail</b><small>length · injection · PII redaction · domain · clamp</small></div>
+<div class="box acc" style="left:460px;top:490px;width:160px;height:84px"><b>Classifier</b><small>intent · type · attributes (structured output)</small></div>
+<div class="box" style="left:660px;top:490px;width:160px;height:84px"><b>Retriever</b><small>filter → BM25 ∪ FAISS → RRF fusion → 40 cands</small></div>
+<div class="box" style="left:860px;top:490px;width:170px;height:84px"><b>Comp Analyst</b><small>prioritize (nbhd, area, age, quality) · $ adjustments</small></div>
+<div class="box sky" style="left:1070px;top:425px;width:170px;height:84px"><b>Pricing Model</b><small>prediction + 90% interval + contributions</small></div>
+<div class="box acc" style="left:1070px;top:545px;width:170px;height:84px"><b>Valuer</b><small>ensemble (comps ⊕ ML) · range · narrative</small></div>
+<div class="box" style="left:1280px;top:425px;width:150px;height:84px"><b>Risk Analyst</b><small>dispersion · coverage · divergence → 0–100</small></div>
+<div class="box sage" style="left:1280px;top:545px;width:150px;height:84px"><b>Judge</b><small>5 criteria · approve / flag / reject</small></div>
+<div class="box" style="left:1460px;top:490px;width:60px;height:84px;text-align:center;padding:10px 4px"><b>API</b><small>JSON</small></div>
+<div class="box" style="left:270px;top:666px;width:780px;height:54px;background:#fffefb"><b>Response envelope</b><small>requestId · engine · guardrails · classification · comparables · valuation · prediction · judge · risk · impact · trace · answer</small></div>
 
 <!-- Lane 3: quality loop -->
-<div class="lane" style="top:705px;height:250px"><span class="t">03 · Quality loop</span></div>
-<div class="box" style="left:80px;top:745px;width:230px"><b>Feedback (SQLite)</b><small>👍 / 👎 · corrected value · comment, joined to request id</small></div>
-<div class="box" style="left:350px;top:745px;width:230px"><b>Golden set</b><small>60 cases: hold-out valuations from real records, intents, guardrails + human corrections</small></div>
-<div class="box sage" style="left:620px;top:745px;width:230px"><b>Built-in eval (CI, no key)</b><small>precision/recall, MAPE, range coverage, groundedness, intent &amp; guardrail accuracy</small></div>
-<div class="box acc" style="left:890px;top:745px;width:230px"><b>DeepEval (LLM-graded)</b><small>Faithfulness · Answer relevancy · Contextual precision/recall · Hallucination</small></div>
-<div class="box" style="left:1160px;top:745px;width:360px"><b>/api/v1/evaluation/latest</b><small>metrics, thresholds, pass rates, trend history, judge agreement, latency p50/p95 → Evaluation dashboard</small></div>
-<div class="box" style="left:80px;top:855px;width:1440px;background:#fffefb"><b>Deploy</b><small>Frontend on Vercel (static Next.js, NEXT_PUBLIC_API_URL) · Backend on Render (Docker, warm caches at build, persistent disk, /health, rate limit, strict CORS, RFC 9457 errors) · secrets via env only</small></div>
+<div class="lane" style="top:760px;height:222px"><span class="t">03 · Quality loop</span></div>
+<div class="box" style="left:80px;top:800px;width:230px;height:90px"><b>Feedback (SQLite)</b><small>👍 / 👎 · corrected value · comment, joined to request id</small></div>
+<div class="box" style="left:350px;top:800px;width:230px;height:90px"><b>Golden set</b><small>60 cases: hold-out valuations, intents, guardrails + human corrections</small></div>
+<div class="box sage" style="left:620px;top:800px;width:230px;height:90px"><b>Built-in eval (CI, no key)</b><small>precision/recall, MAPE, range coverage, groundedness, embedding benchmark</small></div>
+<div class="box acc" style="left:890px;top:800px;width:230px;height:90px"><b>DeepEval (LLM-graded)</b><small>Faithfulness · Answer relevancy · Contextual precision/recall · Hallucination</small></div>
+<div class="box" style="left:1160px;top:800px;width:360px;height:90px"><b>/api/v1/evaluation/latest</b><small>metrics, thresholds, pass rates, trend, judge agreement, latency p50/p95 → Evaluation dashboard</small></div>
+<div class="box" style="left:80px;top:914px;width:1440px;height:52px;background:#fffefb"><b>Run &amp; deploy</b><small>Local: uvicorn + next dev · Optional cloud: Next.js on Vercel, FastAPI on Render (Docker, warm caches, /health, rate limit, strict CORS, RFC 9457 errors) · secrets via env only</small></div>
 
 <svg><defs><marker id="m" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#807e77"/></marker><marker id="ma" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#b85c3c"/></marker></defs>
-  <path class="arrow" d="M250,200 H288"/><path class="arrow" d="M480,195 H518"/><path class="arrow" d="M480,215 Q500,268 518,270"/>
-  <path class="arrow" d="M720,192 H758"/><path class="arrow" d="M720,205 Q740,268 758,272"/>
-  <path class="arrow" d="M720,262 Q860,215 998,196"/><path class="arrow" d="M720,272 H998"/><path class="arrow" d="M720,282 Q1000,310 1258,232"/>
-  <path class="arrow" d="M860,320 V433"/><text class="lbl" x="868" y="380">indexes</text>
-  <path class="arrow" d="M1155,320 V378"/><text class="lbl" x="1163" y="352">model</text>
-  <path class="arrow" d="M1355,320 V378"/><text class="lbl" x="1363" y="352">stats · elasticities</text>
-  <path class="arrow" d="M230,465 H268"/><path class="arrow" d="M420,465 H458"/><path class="arrow" d="M620,465 H658"/><path class="arrow" d="M820,465 H858"/>
-  <path class="arrow" d="M1030,455 Q1050,410 1068,410"/><path class="arrow" d="M1030,475 Q1050,520 1068,520"/>
-  <path class="arrow" d="M1240,410 H1278"/><path class="arrow" d="M1240,520 H1278"/><path class="arrow" d="M1155,445 V488"/><path class="arrow" d="M1355,445 V488"/>
-  <path class="arrow" d="M1430,520 Q1450,500 1458,470"/><path class="arrow" d="M1430,410 Q1450,430 1458,460"/>
-  <path class="loop" d="M1355,558 V575 H740 V530"/><text class="lbl" x="760" y="571">judge rejects → second pass with a doubled candidate pool</text>
-  <path class="arrow" d="M1490,490 Q1490,610 1052,615"/><path class="arrow" d="M270,615 Q150,615 155,502"/>
-  <path class="arrow" d="M310,775 H348"/><path class="arrow" d="M580,775 H618"/><path class="arrow" d="M580,790 Q740,830 888,790"/><path class="arrow" d="M850,775 Q1000,725 1158,770"/><path class="arrow" d="M1120,775 H1158"/>
-  <path class="arrow" d="M650,655 Q650,700 190,743"/><text class="lbl" x="330" y="690">every response logged with its estimate → feedback joins by requestId</text>
+  <!-- lane 1 -->
+  <path class="arrow" d="M250,208 H288"/>
+  <path class="arrow" d="M480,200 H518"/>
+  <path class="arrow" d="M480,226 Q500,304 518,304"/>
+  <path class="arrow" d="M720,208 H758"/>
+  <path class="arrow" d="M640,172 C640,148 1100,148 1100,170"/>
+  <path class="arrow" d="M720,304 H758"/>
+  <path class="line" d="M620,340 V356 H1380 V350"/><path class="arrow" d="M1380,352 V342"/>
+  <path class="arrow" d="M1100,356 V342"/>
+  <!-- lane 1 → lane 2 -->
+  <path class="arrow" d="M740,372 V488"/><text class="lbl" x="752" y="430">indexes · models · stats</text><text class="lbl" x="752" y="444">loaded in memory</text>
+  <!-- lane 2 -->
+  <path class="arrow" d="M230,532 H268"/><path class="arrow" d="M420,532 H458"/><path class="arrow" d="M620,532 H658"/><path class="arrow" d="M820,532 H858"/>
+  <path class="arrow" d="M1030,515 Q1050,467 1068,467"/><path class="arrow" d="M1030,550 Q1050,587 1068,587"/>
+  <path class="arrow" d="M1240,467 H1278"/><path class="arrow" d="M1240,587 H1278"/>
+  <path class="arrow" d="M1155,509 V543"/><path class="arrow" d="M1355,509 V543"/>
+  <path class="arrow" d="M1430,467 Q1450,480 1458,515"/><path class="arrow" d="M1430,587 Q1450,574 1458,550"/>
+  <path class="loop" d="M1355,629 V648 H740 V576"/><text class="lbl acc" x="752" y="643">judge rejects → second pass with a doubled candidate pool</text>
+  <path class="arrow" d="M1490,574 V693 H1052"/>
+  <path class="arrow" d="M270,693 Q155,693 155,576"/>
+  <!-- lane 2 → lane 3 -->
+  <path class="arrow" d="M650,720 V744 H270 V798"/><text class="lbl" x="662" y="748">every response logged → feedback joins by requestId</text>
+  <!-- lane 3 -->
+  <path class="arrow" d="M310,845 H348"/><path class="arrow" d="M580,845 H618"/>
+  <path class="arrow" d="M520,800 C520,776 1005,776 1005,798"/>
+  <path class="arrow" d="M1120,845 H1158"/>
+  <path class="arrow" d="M735,890 C735,908 1340,908 1340,892"/>
 </svg>
 </div></body></html>

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Property(BaseModel):
@@ -203,11 +203,23 @@ class SearchResponse(BaseModel):
     hits: list[SearchHit]
 
 
-class ValuationRequest(SubjectAttributes):
+class ExplicitAttributes(SubjectAttributes):
+    """Attributes typed in by a client: reject impossible values with a 422
+    (extracted attributes are clamped instead, see guardrails.attribute_sanity)."""
+
+    @field_validator("bedrooms", "grLivArea", "yearBuilt", "overallQual", "garageCars", "totalBsmtSF", "lotArea", "fullBath")
+    @classmethod
+    def non_negative(cls, v: int | None) -> int | None:
+        if v is not None and v < 0:
+            raise ValueError("must be zero or greater")
+        return v
+
+
+class ValuationRequest(ExplicitAttributes):
     top_k: int = Field(default=8, ge=1, le=25)
 
 
-class PredictRequest(SubjectAttributes):
+class PredictRequest(ExplicitAttributes):
     pass
 
 
@@ -281,6 +293,7 @@ class Health(BaseModel):
     version: str
     engine: str
     embedding: str
+    vectorStore: str = ""
     records: int
     llm: dict
     latency: dict

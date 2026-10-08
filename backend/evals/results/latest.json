@@ -1,0 +1,96 @@
+{
+  "runId": "eval_2026-10-08_1517",
+  "ranAt": "2026-10-08T15:17:59.352075+00:00",
+  "cases": 61,
+  "metrics": [
+    {
+      "name": "Faithfulness",
+      "score": 1.0,
+      "threshold": 0.85,
+      "passRate": 1.0
+    },
+    {
+      "name": "Answer relevancy",
+      "score": 0.9821,
+      "threshold": 0.8,
+      "passRate": 0.9821
+    },
+    {
+      "name": "Contextual precision",
+      "score": 0.8371,
+      "threshold": 0.7,
+      "passRate": 0.8036
+    },
+    {
+      "name": "Contextual recall",
+      "score": 0.9107,
+      "threshold": 0.7,
+      "passRate": 0.8571
+    },
+    {
+      "name": "Hallucination",
+      "score": 0.0,
+      "threshold": 0.1,
+      "passRate": 1.0
+    },
+    {
+      "name": "Valuation MAPE",
+      "score": 0.0984,
+      "threshold": 0.15,
+      "passRate": 0.7778
+    },
+    {
+      "name": "Range coverage",
+      "score": 0.8222,
+      "threshold": 0.7,
+      "passRate": 0.8222
+    },
+    {
+      "name": "Intent accuracy",
+      "score": 0.9821,
+      "threshold": 0.85,
+      "passRate": 0.9821
+    },
+    {
+      "name": "Guardrail accuracy",
+      "score": 1.0,
+      "threshold": 0.95,
+      "passRate": 1.0
+    }
+  ],
+  "judgeAgreement": 0.7111,
+  "history": [
+    {
+      "date": "Oct 07",
+      "faithfulness": 1.0,
+      "relevancy": 0.982,
+      "precision": 0.868
+    },
+    {
+      "date": "Oct 08",
+      "faithfulness": 1.0,
+      "relevancy": 0.982,
+      "precision": 0.873
+    },
+    {
+      "date": "Oct 08",
+      "faithfulness": 1.0,
+      "relevancy": 1.0,
+      "precision": 0.961
+    },
+    {
+      "date": "Oct 08",
+      "faithfulness": 1.0,
+      "relevancy": 0.982,
+      "precision": 0.837
+    }
+  ],
+  "feedback": {
+    "positive": 0,
+    "negative": 1,
+    "corrected": 1
+  },
+  "latencyP50": 137,
+  "latencyP95": 176,
+  "source": "builtin"
+}

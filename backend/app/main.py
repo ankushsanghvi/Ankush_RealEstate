@@ -76,7 +76,7 @@ def svc() -> Services:
 def health():
     s = svc()
     return Health(
-        status="ok", version=settings.version, engine="llm" if s.llm.enabled else "rules", embedding=s.index.embedder.name, records=len(s.ds),
+        status="ok", version=settings.version, engine="llm" if s.llm.enabled else "rules", embedding=s.index.embedder.name, vectorStore=s.index.store.name, records=len(s.ds),
         llm=s.llm.status, latency=s.latency_stats(), uptimeS=int(time.time() - s.started_at),
     )
 

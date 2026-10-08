@@ -8,9 +8,7 @@ export function CTA() {
     <section className="py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <Reveal>
-          <div className="relative overflow-hidden rounded-[28px] border border-line bg-surface px-6 py-16 text-center shadow-md sm:px-12 sm:py-24">
-            <div className="orb left-[-80px] top-[-80px] h-[320px] w-[320px] bg-[color:var(--accent-soft)]" />
-            <div className="orb right-[-100px] bottom-[-120px] h-[360px] w-[360px] bg-[color:var(--sky-soft)]" style={{ animationDelay: "-9s" }} />
+          <div className="relative overflow-hidden rounded-[28px] bg-paper-2 px-6 py-16 text-center sm:px-12 sm:py-24">
             <div className="relative">
               <h2 className="display mx-auto max-w-3xl text-[36px] sm:text-[56px] text-ink">
                 Ask the question a valuer would ask. <em>Get the answer</em> a reviewer would accept.

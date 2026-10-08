@@ -48,13 +48,13 @@ def extract_regex(query: str) -> SubjectAttributes:
         if re.search(rf"\b{re.escape(name.lower())}\b", q) or re.search(rf"\b{re.escape(code.lower())}\b", q):
             attrs.neighborhood = code
             break
-    if m := re.search(r"(\d)\s*-?\s*(bed|br\b|bedroom|bd\b)", q):
+    if m := re.search(r"\b(\d{1,2})\s*-?\s*(bed|br\b|bedroom|bd\b)", q):
         attrs.bedrooms = int(m.group(1))
-    if m := re.search(r"(\d)\s*-?\s*(bath|ba\b)", q):
+    if m := re.search(r"(?<![\d.])(\d{1,2})(?:\.5)?\s*-?\s*(bath|ba\b)", q):
         attrs.fullBath = int(m.group(1))
     if m := re.search(r"(\d{3,5})\s*(sq\s?ft|sqft|square feet|sf\b)", q):
         attrs.grLivArea = int(m.group(1))
-    if m := re.search(r"(?:built|from|circa|in)\s*(?:around|about|~)?\s*((?:18|19|20)\d{2})", q):
+    if m := re.search(r"(?:built|from|circa|in)\s*(?:around|about|~)?\s*((?:18|19|20)\d{2})\b(?!\s*(?:sq|sf|square))", q):
         attrs.yearBuilt = int(m.group(1))
     elif m := re.search(r"\b((?:19|20)\d0)s\b", q):
         attrs.yearBuilt = int(m.group(1)) + 5
@@ -65,7 +65,7 @@ def extract_regex(query: str) -> SubjectAttributes:
             if re.search(rf"\b{word}\b\s*(quality|condition|grade)?", q) and re.search(rf"\b{word}\b", q):
                 attrs.overallQual = val
                 break
-    if m := re.search(r"(\d)\s*-?\s*car", q):
+    if m := re.search(r"\b(\d{1,2})\s*-?\s*car", q):
         attrs.garageCars = int(m.group(1))
     if m := re.search(r"(\d{3,5})\s*(sq\s?ft|sqft)?\s*(finished\s*)?basement", q):
         attrs.totalBsmtSF = int(m.group(1))

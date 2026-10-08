@@ -8,10 +8,10 @@ const tones: Record<Tone, string> = {
   accent: "bg-accent-soft text-accent-ink border-transparent",
   sage: "bg-sage-soft text-[color:var(--sage)] border-transparent",
   sky: "bg-sky-soft text-[color:var(--sky)] border-transparent",
-  sun: "bg-sun-soft text-[#8a6418] border-transparent dark:text-[color:var(--sun)]",
-  good: "bg-[rgba(12,163,12,0.10)] text-[color:var(--delta-good-text)] border-transparent",
-  warning: "bg-[rgba(250,178,25,0.14)] text-[#8a6418] border-transparent dark:text-[#fab219]",
-  critical: "bg-[rgba(208,59,59,0.10)] text-[color:var(--status-critical)] border-transparent",
+  sun: "bg-sun-soft text-[color:var(--sun)] border-transparent",
+  good: "bg-sage-soft text-[color:var(--delta-good-text)] border-transparent",
+  warning: "bg-sun-soft text-[color:var(--sun)] border-transparent",
+  critical: "bg-[color:var(--critical-soft)] text-[color:var(--status-critical)] border-transparent",
   outline: "bg-transparent text-ink-2 border-line",
 };
 

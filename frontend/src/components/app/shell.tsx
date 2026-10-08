@@ -79,7 +79,7 @@ export function Shell({ children, title, subtitle }: { children: React.ReactNode
               </div>
               {health?.mode === "demo" && <p className="mt-2 leading-snug text-ink-3">No API reachable. Showing deterministic demo data so the UI stays usable.</p>}
               {health?.mode === "live" && <p className="mt-2 leading-snug text-ink-3">{health.records?.toLocaleString()} records indexed · {health.engine === "llm" ? `LLM agents (${health.llmModel})` : "rules engine (no LLM key)"}</p>}
-              {health?.llmError && <p className="mt-1.5 rounded-md bg-[rgba(236,131,90,0.12)] px-2 py-1 leading-snug text-[11.5px] text-[color:var(--status-serious)]">LLM degraded → rules: {health.llmError}</p>}
+              {health?.llmError && <p className="mt-1.5 rounded-md bg-[color:var(--serious-soft)] px-2 py-1 leading-snug text-[11.5px] text-[color:var(--status-serious)]">LLM degraded → rules: {health.llmError}</p>}
             </div>
           )}
         </div>

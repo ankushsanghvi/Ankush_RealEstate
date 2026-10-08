@@ -1,0 +1,30 @@
+[
+  {
+    "date": "Oct 07",
+    "faithfulness": 1.0,
+    "relevancy": 0.982,
+    "precision": 0.868,
+    "runId": "eval_2026-10-07_0842"
+  },
+  {
+    "date": "Oct 08",
+    "faithfulness": 1.0,
+    "relevancy": 0.982,
+    "precision": 0.873,
+    "runId": "eval_2026-10-08_0621"
+  },
+  {
+    "date": "Oct 08",
+    "faithfulness": 1.0,
+    "relevancy": 1.0,
+    "precision": 0.961,
+    "runId": "eval_2026-10-08_0651"
+  },
+  {
+    "date": "Oct 08",
+    "faithfulness": 1.0,
+    "relevancy": 0.982,
+    "precision": 0.837,
+    "runId": "eval_2026-10-08_1517"
+  }
+]

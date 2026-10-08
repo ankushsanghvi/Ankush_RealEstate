@@ -10,9 +10,10 @@ const SUGGESTIONS = [
   "Estimate a 1950s Old Town bungalow, 1,100 sq ft, 2 bedrooms, quality 5",
 ];
 
-export function QueryBar({ onSubmit, loading, initial = "" }: { onSubmit: (q: string) => void; loading: boolean; initial?: string }) {
+export function QueryBar({ onSubmit, loading, initial = "", filtersActive = false }: { onSubmit: (q: string) => void; loading: boolean; initial?: string; filtersActive?: boolean }) {
   const [value, setValue] = useState(initial);
-  const submit = () => { if (value.trim() && !loading) onSubmit(value.trim()); };
+  const canSubmit = !loading && (value.trim() !== "" || filtersActive);
+  const submit = () => { if (canSubmit) onSubmit(value.trim()); };
   return (
     <div>
       <div className={cn("card flex items-end gap-2 rounded-2xl p-2 pl-4 transition-shadow focus-within:shadow-md", loading && "opacity-80")}>
@@ -21,14 +22,15 @@ export function QueryBar({ onSubmit, loading, initial = "" }: { onSubmit: (q: st
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
           rows={2}
-          placeholder="Describe the property or ask a valuation question in plain language…"
+          placeholder={filtersActive ? "Optional — add details, or press Enter to search with your filters…" : "Describe the property or ask a valuation question in plain language…"}
           className="max-h-40 min-h-[52px] flex-1 resize-none bg-transparent py-2 text-[15px] leading-relaxed text-ink placeholder:text-ink-3 focus:outline-none"
         />
         <button
           onClick={submit}
-          disabled={loading || !value.trim()}
+          disabled={!canSubmit}
           aria-label="Run query"
-          className="mb-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ink text-paper transition-opacity disabled:opacity-30"
+          title={canSubmit ? "Run query" : "Type a question or set a filter"}
+          className="mb-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-on-accent transition-colors hover:bg-accent-ink disabled:bg-surface-2 disabled:text-ink-3"
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={16} />}
         </button>

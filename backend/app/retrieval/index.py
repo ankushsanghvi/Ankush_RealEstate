@@ -1,9 +1,10 @@
 """Hybrid retrieval: BM25 (keyword) ∪ dense cosine (semantic), fused with
 reciprocal-rank fusion, then metadata-filtered.
 
-At 2.9k documents a numpy matrix is the right vector store: exact search,
-sub-millisecond, zero infra. The class boundary is the swap point for
-pgvector / Qdrant if the corpus ever grows by orders of magnitude."""
+Dense vectors live in a FAISS exact inner-product index (`vector_store.py`);
+metadata filters are pushed into the FAISS search as an ID selector, and BM25
+is restricted to the same allowed set, so both rankings respect the hard
+constraints before fusion."""
 from __future__ import annotations
 
 import hashlib
@@ -18,6 +19,7 @@ from rank_bm25 import BM25Okapi
 
 from app.data.loader import Dataset, NEIGHBORHOOD_NAMES, apply_filters
 from app.retrieval.embedder import Embedder, build_embedder
+from app.retrieval.vector_store import VectorStore
 from app.schemas import Property, QueryFilters
 
 log = logging.getLogger(__name__)
@@ -53,7 +55,8 @@ class HybridIndex:
         self.bm25 = BM25Okapi([tokenize(t) for t in texts])
         self.embedder: Embedder = build_embedder(backend, model_name)
         self.matrix = self._load_or_embed(texts, cache_dir)
-        log.info("index ready: %d docs, embedder=%s, %.1fs", len(texts), self.embedder.name, time.perf_counter() - t0)
+        self.store = VectorStore(self.matrix)
+        log.info("index ready: %d docs, embedder=%s, store=%s, %.1fs", len(texts), self.embedder.name, self.store.name, time.perf_counter() - t0)
 
     def _load_or_embed(self, texts: list[str], cache_dir: Path) -> np.ndarray:
         key = hashlib.sha1((self.embedder.name + "|" + "\n".join(texts)).encode()).hexdigest()[:16]
@@ -74,30 +77,28 @@ class HybridIndex:
             return [], 0
 
         q_dense = self.embedder.encode([query])[0]
-        sem_all = self.matrix @ q_dense                     # cosine (rows are L2-normalised)
         kw_all = np.asarray(self.bm25.get_scores(tokenize(query)), dtype=np.float32)
-
-        sem = sem_all[allowed_idx]
         kw = kw_all[allowed_idx]
         n = min(pool, len(allowed_idx))
-        sem_rank = np.argsort(-sem)[:n]
-        kw_rank = np.argsort(-kw)[:n]
+        sem_ids, _ = self.store.search(q_dense, n, allowed_idx)       # global row ids, best first
+        kw_ids = allowed_idx[np.argsort(-kw, kind="stable")[:n]]
 
         fused: dict[int, float] = {}
-        for r, j in enumerate(sem_rank):
-            fused[j] = fused.get(j, 0.0) + self.dense_weight / (self.rrf_k + r + 1)
-        for r, j in enumerate(kw_rank):
-            fused[j] = fused.get(j, 0.0) + (1 - self.dense_weight) / (self.rrf_k + r + 1)
+        for r, gi in enumerate(sem_ids):
+            fused[int(gi)] = fused.get(int(gi), 0.0) + self.dense_weight / (self.rrf_k + r + 1)
+        for r, gi in enumerate(kw_ids):
+            fused[int(gi)] = fused.get(int(gi), 0.0) + (1 - self.dense_weight) / (self.rrf_k + r + 1)
 
         kw_max = float(kw.max()) if kw.size and kw.max() > 0 else 1.0
         f_max = max(fused.values()) if fused else 1.0
+        top = sorted(fused.items(), key=lambda kv: -kv[1])[:top_k]
+        sem_top = self.store.scores(q_dense, np.array([gi for gi, _ in top], dtype=np.int64))
         hits = []
-        for j, score in sorted(fused.items(), key=lambda kv: -kv[1])[:top_k]:
-            gi = int(allowed_idx[j])
+        for (gi, score), cos in zip(top, sem_top):
             hits.append(Hit(
                 property=self.ds.properties[gi],
-                semantic=float(np.clip((sem[j] + 1) / 2, 0, 1)),   # map cosine [-1,1] → [0,1]
-                keyword=float(kw[j] / kw_max),
+                semantic=float(np.clip((cos + 1) / 2, 0, 1)),   # map cosine [-1,1] → [0,1]
+                keyword=float(kw_all[gi] / kw_max),
                 hybrid=float(score / f_max),
             ))
         return hits, int(len(allowed_idx))

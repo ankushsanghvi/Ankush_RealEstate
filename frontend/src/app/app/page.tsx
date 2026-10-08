@@ -10,6 +10,7 @@ import {
   ValuationCard, AnswerCard, PipelineStatusCard, ComparablesCard, PredictionCard, JudgeCard, RiskCard, ImpactCard, AgentTraceCard, FeedbackCard, type FullResponse,
 } from "@/components/app/result-cards";
 import { runQuery } from "@/lib/api";
+import { describeFilters, hasActiveFilters } from "@/lib/filters";
 import type { QueryFilters, QueryResponse } from "@/lib/types";
 import { ShieldAlert, Compass } from "lucide-react";
 
@@ -41,7 +42,12 @@ export default function ConsolePage() {
   const [result, setResult] = useState<QueryResponse | null>(null);
   const [history, setHistory] = useState<QueryResponse[]>([]);
 
-  async function submit(q: string) {
+  const filtersActive = hasActiveFilters(filters);
+
+  async function submit(text: string) {
+    // An empty query box is fine when filters are set: phrase them as the query.
+    const q = text.trim() || describeFilters(filters);
+    if (!q || loading) return;
     setLoading(true);
     try {
       const r = await runQuery(q, filters);
@@ -56,7 +62,7 @@ export default function ConsolePage() {
     <Shell title="Valuation console" subtitle="Natural-language property retrieval, valuation and validation">
       <div className="grid gap-6 xl:grid-cols-[300px_1fr]">
         <aside className="space-y-4 xl:sticky xl:top-[88px] xl:self-start">
-          <FilterPanel value={filters} onChange={setFilters} />
+          <FilterPanel value={filters} onChange={setFilters} onApply={() => submit("")} loading={loading} />
           {history.length > 0 && (
             <div className="card p-4">
               <div className="mb-2 text-[13px] font-semibold text-ink">Recent queries</div>
@@ -72,7 +78,7 @@ export default function ConsolePage() {
         </aside>
 
         <div className="min-w-0 space-y-5">
-          <QueryBar onSubmit={submit} loading={loading} />
+          <QueryBar onSubmit={submit} loading={loading} filtersActive={filtersActive} />
 
           <AnimatePresence mode="wait">
             {loading ? (

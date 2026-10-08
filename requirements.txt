@@ -1,0 +1,3 @@
+# Convenience entry point: installs the backend (FastAPI service) dependencies.
+# Evaluation extras (DeepEval, pytest): pip install -r backend/requirements-eval.txt
+-r backend/requirements.txt

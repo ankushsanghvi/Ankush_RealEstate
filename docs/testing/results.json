@@ -1,0 +1,109 @@
+{
+  "ranAt": "2026-10-08T07:10:44.627Z",
+  "results": [
+    {
+      "name": "Homepage renders hero, nav and sections",
+      "ok": true,
+      "ms": 2769,
+      "shot": "01-home-hero.png",
+      "detail": "title \"Valora — AI Property Valuation Assistant\""
+    },
+    {
+      "name": "Navigate to workspace via CTA",
+      "ok": true,
+      "ms": 2553,
+      "shot": "02-console-empty.png",
+      "detail": "empty state visible, backend status 'live' in sidebar"
+    },
+    {
+      "name": "Type a valuation question and submit",
+      "ok": true,
+      "ms": 1225,
+      "shot": "03-console-results.png",
+      "detail": "estimate $204,000, 8 comparables, engine badge: rules engine"
+    },
+    {
+      "name": "Expand comparable #2 to inspect scores, adjustments and record",
+      "ok": true,
+      "ms": 1072,
+      "shot": "04-comparable-expanded.png",
+      "detail": "1 row found; semantic / BM25 / hybrid meters and $ adjustments visible"
+    },
+    {
+      "name": "Submit feedback with a corrected value",
+      "ok": true,
+      "ms": 998,
+      "shot": "05-feedback-recorded.png",
+      "detail": "backend feedback counts now negative=2, corrected=2"
+    },
+    {
+      "name": "Metadata filters constrain comparables (Old Town, built ≤ 1940, ≤ 3 beds)",
+      "ok": true,
+      "ms": 1935,
+      "shot": "06-filters-applied.png",
+      "detail": "all 8 comps are Old Town, built 1900–1940"
+    },
+    {
+      "name": "Prompt-injection attempt is blocked before any model call",
+      "ok": true,
+      "ms": 828,
+      "shot": "07-guardrail-blocked.png",
+      "detail": "blocked card shown; injection + domain checks failed; no comparables rendered"
+    },
+    {
+      "name": "Compare two records with hedonic attribution",
+      "ok": true,
+      "ms": 3325,
+      "shot": "08-compare.png",
+      "detail": "AMES-0001 vs AMES-2000: difference -$61,500, factor bars + narrative from /api/v1/compare"
+    },
+    {
+      "name": "Search and sort the property index",
+      "ok": true,
+      "ms": 3767,
+      "shot": "09-properties.png",
+      "detail": "24 Veenker records; sorted by living area; first row: AMES-1183 Veenker Veenker 9 3 / 2 2,944 1977 3 $150,000"
+    },
+    {
+      "name": "Evaluation dashboard shows the latest run and live feedback counts",
+      "ok": true,
+      "ms": 2590,
+      "shot": "10-evaluation.png",
+      "detail": "18 cases in latest run; corrected values counter = 2 (includes the feedback from step 5)"
+    },
+    {
+      "name": "API reference lists endpoints; backend OpenAPI is live",
+      "ok": true,
+      "ms": 2595,
+      "shot": "11-api-docs.png",
+      "detail": "11 paths in backend OpenAPI"
+    },
+    {
+      "name": "Dark mode toggle",
+      "ok": true,
+      "ms": 3583,
+      "shot": "12-dark-mode.png",
+      "detail": "data-theme=dark persisted to localStorage"
+    },
+    {
+      "name": "Mobile layout (390px) of homepage and console",
+      "ok": true,
+      "ms": 5263,
+      "shot": "14-mobile-console.png",
+      "shot2": "13-mobile-home.png",
+      "detail": "no horizontal scroll; mobile nav chips visible"
+    },
+    {
+      "name": "API: validation error returns problem-details; unknown record → 404",
+      "ok": true,
+      "ms": 7,
+      "detail": "422 application/json · 404 application/problem+json"
+    },
+    {
+      "name": "API: health reports engine, embedding backend and latency percentiles",
+      "ok": true,
+      "ms": 2,
+      "detail": "status=ok engine=rules embedding=fastembed:BAAI/bge-small-en-v1.5 records=2927 p50=138ms p95=161ms"
+    }
+  ]
+}

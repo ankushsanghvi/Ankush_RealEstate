@@ -1,0 +1,76 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Valora — end-to-end test report</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f7f6f2;color:#141413;font-family:Geist,system-ui,sans-serif} .wrap{max-width:1100px;margin:0 auto;padding:40px 24px}
+h1{font-family:"Instrument Serif",serif;font-weight:400;font-size:42px;margin:0;letter-spacing:-.01em} h1 em{color:#b85c3c} .sub{color:#4a4945;margin-top:8px}
+.summary{display:flex;gap:18px;margin:26px 0 34px} .card{background:#fffefb;border:1px solid rgba(20,20,19,.1);border-radius:14px;padding:14px 18px} .card b{display:block;font-size:26px} .card span{font-size:12px;color:#807e77}
+.step{background:#fffefb;border:1px solid rgba(20,20,19,.1);border-radius:16px;padding:18px 20px;margin-bottom:18px} .step.fail{border-color:#d03b3b}
+.meta{display:flex;align-items:center;gap:12px} .meta h2{font-size:16px;margin:0;flex:1} .n{font-family:ui-monospace,monospace;font-size:11px;color:#807e77} .ms{font-family:ui-monospace,monospace;font-size:11px;color:#807e77}
+.badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:#e3eee6;color:#2f6b45} .fail .badge{background:#fde7e7;color:#b02a2a}
+p{font-size:13.5px;color:#4a4945;margin:10px 0 12px} .shots{display:flex;gap:12px;flex-wrap:wrap} .shots img{max-width:100%;width:520px;border:1px solid rgba(20,20,19,.12);border-radius:10px;box-shadow:0 10px 30px -12px rgba(20,20,19,.25)}
+</style></head><body><div class="wrap">
+<h1>Valora — <em>end-to-end</em> test report</h1>
+<div class="sub">Driven through the real UI (Chrome DevTools Protocol) against the live FastAPI backend · 2026-10-08T07:10:44.627Z · LLM disabled for this session (rules engine), no credits spent</div>
+<div class="summary"><div class="card"><b>15/15</b><span>steps passed</span></div><div class="card"><b>33s</b><span>total wall time</span></div><div class="card"><b>13</b><span>screenshots</span></div></div>
+<section class="step ok">
+  <div class="meta"><span class="badge">PASS</span><span class="n">01</span><h2>Homepage renders hero, nav and sections</h2><span class="ms">2769 ms</span></div>
+  <p>title &quot;Valora — AI Property Valuation Assistant&quot;</p>
+  <div class="shots"><a href="01-home-hero.png" target="_blank"><img src="01-home-hero.png" loading="lazy"></a></div>
+</section><section class="step ok">
+  <div class="meta"><span class="badge">PASS</span><span class="n">02</span><h2>Navigate to workspace via CTA</h2><span class="ms">2553 ms</span></div>
+  <p>empty state visible, backend status &#x27;live&#x27; in sidebar</p>
+  <div class="shots"><a href="02-console-empty.png" target="_blank"><img src="02-console-empty.png" loading="lazy"></a></div>
+</section><section class="step ok">
+  <div class="meta"><span class="badge">PASS</span><span class="n">03</span><h2>Type a valuation question and submit</h2><span class="ms">1225 ms</span></div>
+  <p>estimate $204,000, 8 comparables, engine badge: rules engine</p>
+  <div class="shots"><a href="03-console-results.png" target="_blank"><img src="03-console-results.png" loading="lazy"></a></div>
+</section><section class="step ok">
+  <div class="meta"><span class="badge">PASS</span><span class="n">04</span><h2>Expand comparable #2 to inspect scores, adjustments and record</h2><span class="ms">1072 ms</span></div>
+  <p>1 row found; semantic / BM25 / hybrid meters and $ adjustments visible</p>
+  <div class="shots"><a href="04-comparable-expanded.png" target="_blank"><img src="04-comparable-expanded.png" loading="lazy"></a></div>
+</section><section class="step ok">
+  <div class="meta"><span class="badge">PASS</span><span class="n">05</span><h2>Submit feedback with a corrected value</h2><span class="ms">998 ms</span></div>
+  <p>backend feedback counts now negative=2, corrected=2</p>
+  <div class="shots"><a href="05-feedback-recorded.png" target="_blank"><img src="05-feedback-recorded.png" loading="lazy"></a></div>
+</section><section class="step ok">
+  <div class="meta"><span class="badge">PASS</span><span class="n">06</span><h2>Metadata filters constrain comparables (Old Town, built ≤ 1940, ≤ 3 beds)</h2><span class="ms">1935 ms</span></div>
+  <p>all 8 comps are Old Town, built 1900–1940</p>
+  <div class="shots"><a href="06-filters-applied.png" target="_blank"><img src="06-filters-applied.png" loading="lazy"></a></div>
+</section><section class="step ok">
+  <div class="meta"><span class="badge">PASS</span><span class="n">07</span><h2>Prompt-injection attempt is blocked before any model call</h2><span class="ms">828 ms</span></div>
+  <p>blocked card shown; injection + domain checks failed; no comparables rendered</p>
+  <div class="shots"><a href="07-guardrail-blocked.png" target="_blank"><img src="07-guardrail-blocked.png" loading="lazy"></a></div>
+</section><section class="step ok">
+  <div class="meta"><span class="badge">PASS</span><span class="n">08</span><h2>Compare two records with hedonic attribution</h2><span class="ms">3325 ms</span></div>
+  <p>AMES-0001 vs AMES-2000: difference -$61,500, factor bars + narrative from /api/v1/compare</p>
+  <div class="shots"><a href="08-compare.png" target="_blank"><img src="08-compare.png" loading="lazy"></a></div>
+</section><section class="step ok">
+  <div class="meta"><span class="badge">PASS</span><span class="n">09</span><h2>Search and sort the property index</h2><span class="ms">3767 ms</span></div>
+  <p>24 Veenker records; sorted by living area; first row: AMES-1183 Veenker Veenker 9 3 / 2 2,944 1977 3 $150,000</p>
+  <div class="shots"><a href="09-properties.png" target="_blank"><img src="09-properties.png" loading="lazy"></a></div>
+</section><section class="step ok">
+  <div class="meta"><span class="badge">PASS</span><span class="n">10</span><h2>Evaluation dashboard shows the latest run and live feedback counts</h2><span class="ms">2590 ms</span></div>
+  <p>18 cases in latest run; corrected values counter = 2 (includes the feedback from step 5)</p>
+  <div class="shots"><a href="10-evaluation.png" target="_blank"><img src="10-evaluation.png" loading="lazy"></a></div>
+</section><section class="step ok">
+  <div class="meta"><span class="badge">PASS</span><span class="n">11</span><h2>API reference lists endpoints; backend OpenAPI is live</h2><span class="ms">2595 ms</span></div>
+  <p>11 paths in backend OpenAPI</p>
+  <div class="shots"><a href="11-api-docs.png" target="_blank"><img src="11-api-docs.png" loading="lazy"></a></div>
+</section><section class="step ok">
+  <div class="meta"><span class="badge">PASS</span><span class="n">12</span><h2>Dark mode toggle</h2><span class="ms">3583 ms</span></div>
+  <p>data-theme=dark persisted to localStorage</p>
+  <div class="shots"><a href="12-dark-mode.png" target="_blank"><img src="12-dark-mode.png" loading="lazy"></a></div>
+</section><section class="step ok">
+  <div class="meta"><span class="badge">PASS</span><span class="n">13</span><h2>Mobile layout (390px) of homepage and console</h2><span class="ms">5263 ms</span></div>
+  <p>no horizontal scroll; mobile nav chips visible</p>
+  <div class="shots"><a href="14-mobile-console.png" target="_blank"><img src="14-mobile-console.png" loading="lazy"></a><a href="13-mobile-home.png" target="_blank"><img src="13-mobile-home.png" loading="lazy"></a></div>
+</section><section class="step ok">
+  <div class="meta"><span class="badge">PASS</span><span class="n">14</span><h2>API: validation error returns problem-details; unknown record → 404</h2><span class="ms">7 ms</span></div>
+  <p>422 application/json · 404 application/problem+json</p>
+  <div class="shots"></div>
+</section><section class="step ok">
+  <div class="meta"><span class="badge">PASS</span><span class="n">15</span><h2>API: health reports engine, embedding backend and latency percentiles</h2><span class="ms">2 ms</span></div>
+  <p>status=ok engine=rules embedding=fastembed:BAAI/bge-small-en-v1.5 records=2927 p50=138ms p95=161ms</p>
+  <div class="shots"></div>
+</section>
+</div></body></html>

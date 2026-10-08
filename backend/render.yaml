@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: valora-api
+    runtime: docker
+    rootDir: backend
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://valora.vercel.app,http://localhost:3000
+      - key: EMBEDDING_BACKEND
+        value: fastembed
+    disk:
+      name: valora-data
+      mountPath: /app/data
+      sizeGB: 1

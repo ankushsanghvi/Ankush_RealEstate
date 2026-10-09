@@ -64,7 +64,7 @@ to a client, lender or auditor.
 | DeepEval | `evals/run_deepeval.py`: Faithfulness, Answer Relevancy, Contextual Precision/Recall, Hallucination, custom MAPE |
 | Property price prediction | HistGradientBoosting on log(price): 5-fold CV MAPE 9.5 %, R² 0.89, feature contributions (`agents/pricing.py`) |
 | LLM-as-judge for valuation validation | Five criteria, independent prompt, bounded by deterministic checks, retry on rejection (`agents/judge.py`) |
-| Multi-agent valuation collaboration | Typed state graph of 8 agents with a judge → retriever retry edge and a full trace (`graph.py`) |
+| Multi-agent valuation collaboration | LangGraph `StateGraph` of 8 agents with a judge → retriever retry edge and a full trace (`graph.py`) |
 | Property value risk prediction | Dispersion, coverage, method divergence, volatility, age → 0–100 (`agents/risk.py`) |
 | Feature and location impact analysis | Hedonic log-linear OLS with neighborhood fixed effects (`agents/impact.py`), `/compare` |
 | Feedback loop | SQLite store joined to request ids; corrections become evaluation cases automatically (`feedback.py`) |
@@ -79,7 +79,7 @@ to a client, lender or auditor.
 | Embedding model | **BAAI/bge-small-en-v1.5** (384-d) via **fastembed** (ONNX, CPU, no PyTorch). Chosen by benchmark over all-MiniLM-L6-v2, bge-base-en-v1.5 and LSA; LSA is the offline fallback. |
 | Vector database | **FAISS** (`faiss-cpu`, `IndexFlatIP`: exact cosine with filter-aware search) |
 | Keyword search | rank-bm25 (Okapi BM25) |
-| Frameworks | FastAPI, Pydantic v2, Uvicorn · scikit-learn, pandas, numpy, scipy · Anthropic SDK · DeepEval · pytest · Next.js 16 + Tailwind (frontend) |
+| Frameworks | FastAPI, Pydantic v2, Uvicorn · scikit-learn, pandas, numpy, scipy · Anthropic SDK · LangGraph (agent orchestration) · DeepEval · pytest · Next.js 16 + Tailwind (frontend) |
 | Storage | SQLite (request log, feedback) · on-disk cache for embeddings and model |
 
 Why each was chosen, and the alternatives considered: [`design/Design_Document.pdf`](design/Design_Document.pdf), §3.

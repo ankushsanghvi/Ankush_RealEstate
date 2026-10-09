@@ -44,7 +44,7 @@ ENDPOINTS = [
      "Neighborhood list with sale counts, medians and $/sq ft (sorted by median price), the dataset bounds used for attribute clamping, and the pricing model's cross-validated metrics. Drives the filter panel.",
      None, None),
     ("POST", "/api/v1/query", "Natural-language valuation (full multi-agent pipeline)",
-     "The main endpoint. Runs the complete state graph: Guardrail → Classifier → Retriever → Comp Analyst → Pricing Model → Valuer → Risk Analyst → Judge (with one retry on rejection). `filters` are hard metadata constraints applied before ranking. Blocked requests return `guardrails.passed = false` with empty results and no model call.",
+     "The main endpoint. Runs the complete LangGraph agent graph: Guardrail → Classifier → Retriever → Comp Analyst → Pricing Model → Valuer → Risk Analyst → Judge (with one retry on rejection). `filters` are hard metadata constraints applied before ranking. Blocked requests return `guardrails.passed = false` with empty results and no model call.",
      {"query": "3-bedroom in College Creek, 1,650 sq ft, built 1998, quality 7 — what is it worth?", "filters": {}, "top_k": 8}, None),
     ("POST", "/api/v1/search", "Hybrid property search",
      "Retrieval only: BM25 ∪ FAISS dense search fused with reciprocal-rank fusion, after metadata filtering. Returns per-hit semantic, keyword and hybrid scores (all normalised to 0–1).",

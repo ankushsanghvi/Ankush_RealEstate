@@ -1,18 +1,22 @@
-"""Multi-agent valuation graph.
+"""Multi-agent valuation graph, orchestrated with LangGraph.
 
-A small, explicit state machine (no framework): each node is a function
-`state -> state`, edges are declared, one edge is conditional (the judge can
-send the result back for a second pass with a wider comparable pool). Every
-node execution is recorded in the trace with duration, tool and output so the
-UI can show exactly what happened. The whole graph is synchronous and
-deterministic apart from the LLM calls, which all have rule-based fallbacks."""
+Eight agent nodes share one typed `State`. Each node is a plain function
+`state -> state`; a thin wrapper records every execution in the trace (duration,
+tool, output) so the UI can show exactly what happened. Three edges are
+conditional: Guardrail and Classifier can end the run early, and the Judge can
+send the result back to the Retriever for one second pass with a wider
+comparable pool. The graph is synchronous and deterministic apart from the LLM
+calls, which all have rule-based fallbacks."""
 from __future__ import annotations
 
 import logging
 import time
 import uuid
-from dataclasses import dataclass, field
-from typing import Callable
+from dataclasses import dataclass, field, fields
+from typing import Any, Callable
+
+from langgraph.graph import END, START
+from langgraph.graph import StateGraph as LGStateGraph
 
 from app.agents.classifier import classify
 from app.agents.comparables import Subject, prioritize
@@ -20,7 +24,9 @@ from app.agents.guardrails import attribute_sanity, run_guardrails
 from app.agents.judge import judge
 from app.agents.risk import assess_risk
 from app.agents.valuer import ensemble, write_narrative
-from app.schemas import AgentStep, GuardrailCheck, QueryFilters, QueryResponse
+from app.retrieval.index import Hit
+from app.schemas import (AgentStep, Classification, Comparable, GuardrailCheck, GuardrailResult, ImpactFactor, JudgeVerdict, PricePrediction,
+                         QueryFilters, QueryResponse, RiskAssessment, Valuation)
 from app.services import Services
 
 log = logging.getLogger(__name__)
@@ -39,50 +45,44 @@ class State:
     attempt: int = 0
     exclude_ids: set[str] | None = None
     # populated along the way
-    guardrails=None; sanitized: str = ""; classification=None; subject=None; hits=None; pool: int = 0
-    comps=None; prediction=None; valuation=None; meta=None; risk=None; impact=None; judge=None; answer: str = ""; narrative: str = ""
+    guardrails: GuardrailResult | None = None
+    sanitized: str = ""
+    classification: Classification | None = None
+    subject: Subject | None = None
+    hits: list[Hit] | None = None
+    pool: int = 0
+    comps: list[Comparable] | None = None
+    prediction: PricePrediction | None = None
+    valuation: Valuation | None = None
+    meta: dict[str, Any] | None = None
+    risk: RiskAssessment | None = None
+    impact: list[ImpactFactor] | None = None
+    judge: JudgeVerdict | None = None
+    answer: str = ""
+    narrative: str = ""
     blocked: bool = False
+    retry: bool = False
 
 
 Node = Callable[[State], State]
+_FIELDS = [f.name for f in fields(State)]
 
 
-class StateGraph:
-    def __init__(self):
-        self.nodes: dict[str, tuple[str, str, Node]] = {}
-        self.edges: dict[str, str | Callable[[State], str]] = {}
-        self.entry: str | None = None
-
-    def add(self, name: str, role: str, fn: Node, tool: str = ""):
-        self.nodes[name] = (role, tool, fn)
-        if self.entry is None:
-            self.entry = name
-        return self
-
-    def edge(self, src: str, dst: str | Callable[[State], str]):
-        self.edges[src] = dst
-        return self
-
-    def run(self, state: State) -> State:
-        cur = self.entry
-        guard = 0
-        while cur and cur != "END" and guard < 40:
-            guard += 1
-            role, tool, fn = self.nodes[cur]
-            t0 = time.perf_counter()
-            try:
-                out = fn(state)
-                state = out
-                status = "done"
-                output = state.trace_note if hasattr(state, "trace_note") else ""
-            except Exception as e:  # noqa: BLE001
-                log.exception("node %s failed", cur)
-                status = "error"
-                output = f"{type(e).__name__}: {e}"[:160]
-            state.trace.append(AgentStep(agent=cur, role=role, status=status, durationMs=int((time.perf_counter() - t0) * 1000), output=output, tool=tool or None))
-            nxt = self.edges.get(cur, "END")
-            cur = nxt(state) if callable(nxt) else nxt
-        return state
+def _traced(name: str, role: str, tool: str, fn: Node) -> Callable[[State], dict]:
+    """Wrap an agent as a LangGraph node: run it, append an AgentStep to the trace,
+    and hand the updated state back to LangGraph as a full channel update. A failing
+    node is recorded as an error step instead of aborting the run."""
+    def node(state: State) -> dict:
+        t0 = time.perf_counter()
+        try:
+            state = fn(state)
+            status, output = "done", getattr(state, "trace_note", "")
+        except Exception as e:  # noqa: BLE001
+            log.exception("node %s failed", name)
+            status, output = "error", f"{type(e).__name__}: {e}"[:160]
+        state.trace.append(AgentStep(agent=name, role=role, status=status, durationMs=int((time.perf_counter() - t0) * 1000), output=output, tool=tool or None))
+        return {k: getattr(state, k) for k in _FIELDS}
+    return node
 
 
 def _note(state: State, text: str) -> State:
@@ -158,44 +158,60 @@ def n_risk(s: State) -> State:
 def n_judge(s: State) -> State:
     s.judge, eng = judge(s.svc.llm, s.subject, s.comps, s.valuation, s.prediction, s.answer)
     s.engines.append(eng)
-    return _note(s, f"{s.judge.verdict} · {s.judge.score * 100:.0f}/100" + (" · requesting second pass" if s.judge.verdict == "rejected" and s.attempt == 0 else ""))
+    # A rejected first pass earns one retry with a wider comparable pool.
+    s.retry = s.judge.verdict == "rejected" and s.attempt == 0 and len(s.comps) > 0
+    if s.retry:
+        s.attempt += 1
+    return _note(s, f"{s.judge.verdict} · {s.judge.score * 100:.0f}/100" + (" · requesting second pass" if s.retry else ""))
 
 
 def route_after_guardrail(s: State) -> str:
-    return "END" if s.blocked else "Classifier"
+    return END if s.blocked else "Classifier"
 
 
 def route_after_classify(s: State) -> str:
-    return "END" if s.blocked else "Retriever"
+    return END if s.blocked else "Retriever"
 
 
 def route_after_judge(s: State) -> str:
-    if s.judge.verdict == "rejected" and s.attempt == 0 and len(s.comps) > 0:
-        s.attempt += 1
-        return "Retriever"
-    return "END"
+    return "Retriever" if s.retry else END
 
 
-def build_graph() -> StateGraph:
-    g = StateGraph()
-    g.add("Guardrail", "Input validation", n_guardrail, "rules + regex")
-    g.add("Classifier", "Intent & attribute extraction", n_classify, "llm:structured-output")
-    g.add("Retriever", "Hybrid search", n_retrieve, "bm25 + dense (RRF)")
-    g.add("Comp Analyst", "Prioritization & adjustments", n_prioritize, "rules")
-    g.add("Pricing Model", "ML prediction", n_predict, "sklearn:hgb")
-    g.add("Valuer", "Ensemble synthesis", n_value, "llm + rules")
-    g.add("Risk Analyst", "Risk & impact", n_risk, "stats + hedonic ols")
-    g.add("Judge", "Independent validation", n_judge, "llm-as-judge")
-    g.edge("Guardrail", route_after_guardrail).edge("Classifier", route_after_classify).edge("Retriever", "Comp Analyst")
-    g.edge("Comp Analyst", "Pricing Model").edge("Pricing Model", "Valuer").edge("Valuer", "Risk Analyst").edge("Risk Analyst", "Judge").edge("Judge", route_after_judge)
-    return g
+# name → (role, tool, fn); the role and tool are what the UI shows for each trace step.
+AGENTS: dict[str, tuple[str, str, Node]] = {
+    "Guardrail": ("Input validation", "rules + regex", n_guardrail),
+    "Classifier": ("Intent & attribute extraction", "llm:structured-output", n_classify),
+    "Retriever": ("Hybrid search", "bm25 + dense (RRF)", n_retrieve),
+    "Comp Analyst": ("Prioritization & adjustments", "rules", n_prioritize),
+    "Pricing Model": ("ML prediction", "sklearn:hgb", n_predict),
+    "Valuer": ("Ensemble synthesis", "llm + rules", n_value),
+    "Risk Analyst": ("Risk & impact", "stats + hedonic ols", n_risk),
+    "Judge": ("Independent validation", "llm-as-judge", n_judge),
+}
+
+
+def build_graph():
+    g = LGStateGraph(State)
+    for name, (role, tool, fn) in AGENTS.items():
+        g.add_node(name, _traced(name, role, tool, fn))
+    g.add_edge(START, "Guardrail")
+    g.add_conditional_edges("Guardrail", route_after_guardrail, ["Classifier", END])
+    g.add_conditional_edges("Classifier", route_after_classify, ["Retriever", END])
+    g.add_edge("Retriever", "Comp Analyst")
+    g.add_edge("Comp Analyst", "Pricing Model")
+    g.add_edge("Pricing Model", "Valuer")
+    g.add_edge("Valuer", "Risk Analyst")
+    g.add_edge("Risk Analyst", "Judge")
+    g.add_conditional_edges("Judge", route_after_judge, ["Retriever", END])
+    return g.compile()
 
 
 GRAPH = build_graph()
 
 
 def run_pipeline(svc: Services, query: str, filters: QueryFilters, top_k: int = 8, exclude_ids: set[str] | None = None) -> QueryResponse:
-    s = GRAPH.run(State(query=query, filters=filters, top_k=top_k, svc=svc, exclude_ids=exclude_ids))
+    out = GRAPH.invoke(State(query=query, filters=filters, top_k=top_k, svc=svc, exclude_ids=exclude_ids), {"recursion_limit": 40})
+    s = State(**out)
     engine = "rules" if not s.engines or all(e == "rules" for e in s.engines) else ("llm-degraded" if any(e in ("rules", "llm-degraded") for e in s.engines) else "llm")
     latency = int((time.perf_counter() - s.started) * 1000)
     if s.blocked:
@@ -203,5 +219,5 @@ def run_pipeline(svc: Services, query: str, filters: QueryFilters, top_k: int = 
                              answer="The request was blocked by input guardrails before any retrieval or model call. Rephrase it as a property description or valuation question.")
     return QueryResponse(
         requestId=s.request_id, engine=engine, query=query, latencyMs=latency, guardrails=s.guardrails, classification=s.classification,
-        comparables=s.comps, valuation=s.valuation, prediction=s.prediction, judge=s.judge, risk=s.risk, impact=s.impact, agentTrace=s.trace, answer=s.answer,
+        comparables=s.comps or [], valuation=s.valuation, prediction=s.prediction, judge=s.judge, risk=s.risk, impact=s.impact or [], agentTrace=s.trace, answer=s.answer,
     )

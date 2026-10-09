@@ -46,7 +46,7 @@ python evals/run_deepeval.py 10         # DeepEval LLM-graded suite, first 10 ca
 ```
 app/
   main.py          FastAPI app, middleware, endpoints
-  graph.py         typed state graph: nodes, edges, judge retry loop, tracing
+  graph.py         LangGraph StateGraph: nodes, edges, judge retry loop, tracing
   services.py      startup singletons (dataset, index, models, LLM, feedback store)
   schemas.py       Pydantic contracts (mirror frontend/src/lib/types.ts)
   config.py        env-driven settings

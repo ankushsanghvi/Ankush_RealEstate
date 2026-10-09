@@ -186,7 +186,7 @@ curl -s -X GET 'http://localhost:8000/api/v1/meta'
 
 **`POST /api/v1/query`**
 
-The main endpoint. Runs the complete state graph: Guardrail → Classifier → Retriever → Comp Analyst → Pricing Model → Valuer → Risk Analyst → Judge (with one retry on rejection). `filters` are hard metadata constraints applied before ranking. Blocked requests return `guardrails.passed = false` with empty results and no model call.
+The main endpoint. Runs the complete LangGraph agent graph: Guardrail → Classifier → Retriever → Comp Analyst → Pricing Model → Valuer → Risk Analyst → Judge (with one retry on rejection). `filters` are hard metadata constraints applied before ranking. Blocked requests return `guardrails.passed = false` with empty results and no model call.
 
 **Request format** — `QueryRequest`
 

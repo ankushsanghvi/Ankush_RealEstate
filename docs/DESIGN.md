@@ -36,7 +36,7 @@ outlier removal, neighborhood statistics) → **chunking** into one natural-lang
 parallel, a numeric feature frame trains the gradient-boosted **pricing model** and a **hedonic OLS** model,
 and feeds the metadata store used for hard filters.
 
-**Online request.** FastAPI receives the query and runs a typed state graph of eight agents: Guardrail →
+**Online request.** FastAPI receives the query and runs a LangGraph `StateGraph` of eight agents: Guardrail →
 Classifier → Retriever → Comp Analyst → Pricing Model → Valuer → Risk Analyst → Judge. The judge can send
 the request back to the retriever once. The response envelope carries every intermediate artifact and a
 timed trace. The Next.js UI renders it.
@@ -106,7 +106,7 @@ cannot be imported, the store falls back to numpy with the same results.
 | Keyword search | rank-bm25 | small, pure Python, standard Okapi BM25 |
 | ML | scikit-learn `HistGradientBoostingRegressor`, numpy/scipy OLS | strong tabular baseline, no GPU, fast training (≈2 s) |
 | LLM SDK | `anthropic` with a provider-agnostic wrapper | structured outputs, retries, fallback, circuit breaker |
-| Orchestration | hand-written typed state graph (`graph.py`) | see §5; no framework lock-in, fully traceable |
+| Orchestration | LangGraph `StateGraph` over a typed dataclass state (`graph.py`) | conditional edges and a bounded cycle (judge → retriever) as first-class concepts; agents stay plain functions; see §5.5 |
 | Evaluation | DeepEval + built-in runner, pytest | LLM-graded and key-free layers |
 | Front end | Next.js 16, TypeScript, Tailwind (approved by faculty in place of Streamlit) | evidence-rich UI: drill-downs, compare view, evaluation dashboard, dark mode, mobile |
 
@@ -181,7 +181,9 @@ rates from the hedonic fit), producing an adjusted price. Every reason and adjus
 ```
 Guardrail ──blocked──▶ END (no retrieval, no model call)
     │ pass
-Classifier ─▶ Retriever ─▶ Comp Analyst ─▶ Pricing Model ─▶ Valuer ─▶ Risk Analyst ─▶ Judge
+Classifier ──out of scope──▶ END
+    │ in scope
+    ▼ Retriever ─▶ Comp Analyst ─▶ Pricing Model ─▶ Valuer ─▶ Risk Analyst ─▶ Judge
                   ▲                                                                  │
                   └──── rejected (first attempt): retry with a doubled candidate pool ─┘
                                                                                      │ approved / flagged
@@ -217,11 +219,27 @@ In LLM mode the final score is the average of the LLM's score and the determinis
 figure always forces **rejected**. The LLM can add judgement but cannot approve what the checks fail.
 Verdict: approved ≥ 0.8, flagged ≥ 0.5, otherwise rejected.
 
-### 5.5 Why a hand-written graph instead of LangGraph / CrewAI
+### 5.5 Orchestration with LangGraph
 
-Eight nodes, one conditional edge, a full trace: about 120 lines a reviewer can read in one sitting. No hidden
-prompts, no framework version churn, deterministic apart from the LLM calls. The trade-off is that we
-re-implement a small subset of what LangGraph offers, which is acceptable at this size.
+The graph is a LangGraph `StateGraph` compiled once at start-up: eight nodes, three conditional edges
+(Guardrail → END, Classifier → END, Judge → Retriever) and a recursion limit as a hard stop on the loop.
+LangGraph gives us the cycle and the routing as declared structure rather than control flow, and the compiled
+graph can be inspected and drawn (`GRAPH.get_graph()`), which is what the topology test checks.
+
+We deliberately keep the framework at the edges:
+
+- **Agents are plain functions** `State -> State` with no LangGraph imports, so each is unit-testable on its own
+  and the business logic does not depend on the orchestrator.
+- **One wrapper** (`_traced`) turns an agent into a node: it times the call, appends an `AgentStep` to the trace
+  and records a failure as an `error` step instead of aborting the request.
+- **Routers are pure.** Decisions that change state (e.g. the retry counter) are made inside the Judge node and
+  stored on the state (`retry`, `attempt`); the routing functions only read them.
+- **No checkpointer.** Each request is independent and finishes in seconds, so persistence would add cost
+  without benefit. Adding one later (for human-in-the-loop review of flagged valuations) is a one-line change.
+
+We considered CrewAI and AutoGen. Both are built around conversational, LLM-driven hand-offs; here five of
+the eight agents are deterministic (retrieval, ML, statistics) and the flow is known in advance, so an explicit
+graph with typed state is the better fit and keeps the system reproducible in rules mode.
 
 ## 6. Guardrails, security and privacy
 

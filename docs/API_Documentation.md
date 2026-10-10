@@ -174,9 +174,9 @@ curl -s -X GET 'http://localhost:8000/api/v1/meta'
   },
   "records": 2927,
   "model": {
-    "mape": 0.0952,
-    "r2": 0.8877,
-    "sigma_log": 0.1366,
+    "mape": 0.0957,
+    "r2": 0.8861,
+    "sigma_log": 0.1376,
     "n": 2927
   }
 }
@@ -186,7 +186,7 @@ curl -s -X GET 'http://localhost:8000/api/v1/meta'
 
 **`POST /api/v1/query`**
 
-The main endpoint. Runs the complete state graph: Guardrail → Classifier → Retriever → Comp Analyst → Pricing Model → Valuer → Risk Analyst → Judge (with one retry on rejection). `filters` are hard metadata constraints applied before ranking. Blocked requests return `guardrails.passed = false` with empty results and no model call.
+The main endpoint. Runs the complete LangGraph agent graph: Guardrail → Classifier → Retriever → Comp Analyst → Pricing Model → Valuer → Risk Analyst → Judge (with one retry on rejection). `filters` are hard metadata constraints applied before ranking. Blocked requests return `guardrails.passed = false` with empty results and no model call.
 
 **Request format** — `QueryRequest`
 
@@ -228,11 +228,11 @@ curl -s -X POST 'http://localhost:8000/api/v1/query' \
 
 ```json
 {
-  "requestId": "req_7456ff78b4",
+  "requestId": "req_e045a6db0c",
   "mode": "live",
   "engine": "rules",
   "query": "3-bedroom in College Creek, 1,650 sq ft, built 1998, quality 7 — what is it worth?",
-  "latencyMs": 149,
+  "latencyMs": 134,
   "guardrails": {
     "passed": true,
     "checks": [
@@ -359,18 +359,19 @@ curl -s -X POST 'http://localhost:8000/api/v1/query' \
     "estimate": 204000,
     "low": 181000,
     "high": 226500,
-    "confidence": 0.779,
+    "confidence": 0.778,
     "method": "ensemble",
     "pricePerSqft": 124,
-    "narrative": "Weighted 8 prioritized comparables (8 in College Creek) after adjustments for living area, quality, age, garage and basement (comparable-weighted figure $205,000). The gradient-boosted model independently predicts $201,500; the ensemble gives 70% weight to comparables because neighborhood coverage is strong."
+    "narrative": "Weighted 8 prioritized comparables (8 in College Creek) after adjustments for living area, quality, age, garage and basement (comparable-weighted figure $205,000). The gradient-boosted model independently predicts $201,500; the ensemble gives 70% weight to comparables because neighborhood coverage is strong.",
+    "priceBasis": "Historical Ames, Iowa sales 2006–2010, in nominal dollars of the sale year; not adjusted to today's market."
   },
   "prediction": {
     "model": "HistGradientBoosting · v1 (log-target, 5-fold CV)",
     "prediction": 201500,
     "low": 161000,
-    "high": 252500,
-    "mape": 0.0952,
-    "r2": 0.8877,
+    "high": 253000,
+    "mape": 0.0957,
+    "r2": 0.8861,
     "featureContributions": [
       {
         "feature": "GrLivArea",
@@ -646,19 +647,20 @@ curl -s -X POST 'http://localhost:8000/api/v1/valuation' \
   "valuation": {
     "estimate": 273500,
     "low": 233500,
-    "high": 313000,
-    "confidence": 0.584,
+    "high": 313500,
+    "confidence": 0.583,
     "method": "ensemble",
     "pricePerSqft": 137,
-    "narrative": "Weighted 3 prioritized comparables (3 in Somerset) after adjustments for living area, quality, age, garage and basement (comparable-weighted figure $263,000). The gradient-boosted model independently predicts $288,000; the ensemble gives 59% weight to comparables because neighborhood coverage is strong."
+    "narrative": "Weighted 3 prioritized comparables (3 in Somerset) after adjustments for living area, quality, age, garage and basement (comparable-weighted figure $263,000). The gradient-boosted model independently predicts $288,000; the ensemble gives 59% weight to comparables because neighborhood coverage is strong.",
+    "priceBasis": "Historical Ames, Iowa sales 2006–2010, in nominal dollars of the sale year; not adjusted to today's market."
   },
   "prediction": {
     "model": "HistGradientBoosting · v1 (log-target, 5-fold CV)",
     "prediction": 288000,
-    "low": 230000,
-    "high": 360500,
-    "mape": 0.0952,
-    "r2": 0.8877,
+    "low": 229500,
+    "high": 361000,
+    "mape": 0.0957,
+    "r2": 0.8861,
     "featureContributions": [
       {
         "feature": "GrLivArea",
@@ -780,7 +782,7 @@ curl -s -X POST 'http://localhost:8000/api/v1/valuation' \
     },
     "… 1 more"
   ],
-  "answer": "Based on 3 prioritized comparable sales, a 4-bedroom home of 2,000 sq ft in Somerset built around 2005 with quality grade 8 is estimated at $273,500 (range $233,500 – $313,000, $137/sq ft). The strongest comparable is AMES-0386, which sold for $220,000 in 2009 and adjusts to $235,400. The two methods differ by 9%, so the range is widened accordingly."
+  "answer": "Based on 3 prioritized comparable sales, a 4-bedroom home of 2,000 sq ft in Somerset built around 2005 with quality grade 8 is estimated at $273,500 (range $233,500 – $313,500, $137/sq ft). The strongest comparable is AMES-0386, which sold for $220,000 in 2009 and adjusts to $235,400. The two methods differ by 9%, so the range is widened accordingly."
 }
 ```
 
@@ -830,10 +832,10 @@ curl -s -X POST 'http://localhost:8000/api/v1/predict' \
 {
   "model": "HistGradientBoosting · v1 (log-target, 5-fold CV)",
   "prediction": 288000,
-  "low": 230000,
-  "high": 360500,
-  "mape": 0.0952,
-  "r2": 0.8877,
+  "low": 229500,
+  "high": 361000,
+  "mape": 0.0957,
+  "r2": 0.8861,
   "featureContributions": [
     {
       "feature": "GrLivArea",
@@ -1043,7 +1045,7 @@ curl -s -X POST 'http://localhost:8000/api/v1/properties?limit=2&offset=0' \
 
 **`POST /api/v1/feedback`**
 
-Thumbs up/down, an optional corrected value and comment, joined to the original request by `requestId`. Corrected values automatically become evaluation cases in the next eval run.
+Thumbs up/down, an optional corrected value and comment, joined to the original request by `requestId`. Corrected values automatically become evaluation cases in the next eval run. An unknown `requestId` returns 404 and nothing is stored.
 
 **Request format** — `FeedbackPayload`
 
@@ -1061,7 +1063,7 @@ Thumbs up/down, an optional corrected value and comment, joined to the original 
 ```bash
 curl -s -X POST 'http://localhost:8000/api/v1/feedback' \
   -H 'Content-Type: application/json' \
-  -d '{"requestId": "req_7456ff78b4", "rating": "down", "correctedValue": 215000, "comment": "Recent College Creek sales are higher"}'
+  -d '{"requestId": "req_e045a6db0c", "rating": "down", "correctedValue": 215000, "comment": "Recent College Creek sales are higher"}'
 ```
 
 **Sample response** (`200`)
@@ -1113,8 +1115,8 @@ curl -s -X GET 'http://localhost:8000/api/v1/evaluation/latest'
 
 ```json
 {
-  "runId": "eval_2026-10-08_1517",
-  "ranAt": "2026-10-08T15:17:59.352075+00:00",
+  "runId": "eval_2026-10-09_1612",
+  "ranAt": "2026-10-09T16:12:43.885929+00:00",
   "cases": 61,
   "metrics": [
     {
@@ -1125,13 +1127,13 @@ curl -s -X GET 'http://localhost:8000/api/v1/evaluation/latest'
     },
     {
       "name": "Answer relevancy",
-      "score": 0.9821,
+      "score": 1.0,
       "threshold": 0.8,
-      "passRate": 0.9821
+      "passRate": 1.0
     },
     "… 7 more"
   ],
-  "judgeAgreement": 0.7111,
+  "judgeAgreement": 0.7556,
   "history": [
     {
       "date": "Oct 07",
@@ -1145,15 +1147,15 @@ curl -s -X GET 'http://localhost:8000/api/v1/evaluation/latest'
       "relevancy": 0.982,
       "precision": 0.873
     },
-    "… 2 more"
+    "… 3 more"
   ],
   "feedback": {
     "positive": 0,
     "negative": 1,
     "corrected": 1
   },
-  "latencyP50": 149,
-  "latencyP95": 149,
+  "latencyP50": 134,
+  "latencyP95": 134,
   "source": "builtin"
 }
 ```

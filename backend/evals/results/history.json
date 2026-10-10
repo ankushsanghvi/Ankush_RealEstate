@@ -26,5 +26,12 @@
     "relevancy": 0.982,
     "precision": 0.837,
     "runId": "eval_2026-10-08_1517"
+  },
+  {
+    "date": "Oct 09",
+    "faithfulness": 1.0,
+    "relevancy": 1.0,
+    "precision": 0.908,
+    "runId": "eval_2026-10-09_1612"
   }
 ]

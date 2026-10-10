@@ -1,7 +1,10 @@
 """Price prediction model: gradient-boosted trees on log(SalePrice).
 
 Trained once at startup (≈2 s) and cached by data hash. Honest error metrics
-come from 5-fold cross-validation, not from the training fit. Feature
+come from 5-fold cross-validation, not from the training fit. The two neighborhood
+columns are target statistics (median price, median $/sq ft), so inside each fold
+they are recomputed from the training rows only — otherwise the held-out sale's own
+price leaks into its features. Feature
 contributions use single-feature substitution against the dataset median
 (a cheap, model-agnostic attribution — "SHAP-lite")."""
 from __future__ import annotations
@@ -21,6 +24,7 @@ from app.data.loader import Dataset, FEATURES
 from app.schemas import FeatureContribution, PricePrediction
 
 log = logging.getLogger(__name__)
+CACHE_VERSION = "v2"  # bump when training changes so a stale pickle is not reused
 MODEL_NAME = "HistGradientBoosting · v1 (log-target, 5-fold CV)"
 LABELS = {
     "overallQual": "OverallQual", "overallCond": "OverallCond", "grLivArea": "GrLivArea", "totalBsmtSF": "TotalBsmtSF",
@@ -36,39 +40,55 @@ class PricingModel:
         self.cols = FEATURES + ["nbPpsf", "nbMedian"]
         X, y = self._design(ds.frame)
         key = hashlib.sha1(pd.util.hash_pandas_object(ds.frame).values.tobytes()).hexdigest()[:12]
-        path = cache_dir / f"gbm_{key}.pkl"
+        path = cache_dir / f"gbm_{CACHE_VERSION}_{key}.pkl"
         if path.exists():
             with open(path, "rb") as f:
                 self.model, self.metrics = pickle.load(f)
         else:
-            self.model, self.metrics = self._train(X, y)
+            self.model, self.metrics = self._train(ds.frame, y)
             with open(path, "wb") as f:
                 pickle.dump((self.model, self.metrics), f)
         self.medians = {c: float(np.median(X[:, i])) for i, c in enumerate(self.cols)}
         log.info("pricing model ready: %s", json.dumps(self.metrics))
 
-    def _design(self, frame: pd.DataFrame):
-        st = self.ds.neighborhood_stats
+    def _design(self, frame: pd.DataFrame, stats_from: pd.DataFrame | None = None):
+        """Feature matrix for `frame`. Neighborhood statistics come from `stats_from`
+        (the training rows) when given, else from the whole dataset."""
+        if stats_from is None:
+            st = self.ds.neighborhood_stats
+            ppsf = {n: v["ppsf_median"] for n, v in st.items()}
+            median = {n: v["median"] for n, v in st.items()}
+        else:
+            g = stats_from.assign(ppsf=stats_from["salePrice"] / stats_from["grLivArea"].clip(lower=1)).groupby("neighborhood")
+            ppsf, median = g["ppsf"].median().to_dict(), g["salePrice"].median().to_dict()
         X = frame[FEATURES].astype(float).copy()
-        X["nbPpsf"] = frame["neighborhood"].map(lambda n: st.get(n, {}).get("ppsf_median", 100.0))
-        X["nbMedian"] = frame["neighborhood"].map(lambda n: st.get(n, {}).get("median", 160000))
+        X["nbPpsf"] = frame["neighborhood"].map(lambda n: ppsf.get(n, 100.0))
+        X["nbMedian"] = frame["neighborhood"].map(lambda n: median.get(n, 160000))
         return X.values, np.log(frame["salePrice"].values)
 
     def _make(self):
         return HistGradientBoostingRegressor(max_iter=600, learning_rate=0.05, max_leaf_nodes=31, min_samples_leaf=15, l2_regularization=0.5, random_state=0)
 
-    def _train(self, X, y):
+    def _train(self, frame: pd.DataFrame, y):
         kf = KFold(5, shuffle=True, random_state=0)
         preds = np.zeros_like(y)
-        for tr, te in kf.split(X):
-            m = self._make().fit(X[tr], y[tr])
-            preds[te] = m.predict(X[te])
+        for tr, te in kf.split(frame):
+            train = frame.iloc[tr]
+            m = self._make().fit(self._design(train, train)[0], y[tr])
+            preds[te] = m.predict(self._design(frame.iloc[te], train)[0])
         resid = y - preds
         mape = float(np.mean(np.abs(np.expm1(preds - y))))  # |exp(pred)/exp(y) - 1|
         r2 = float(1 - np.sum(resid ** 2) / np.sum((y - y.mean()) ** 2))
         sigma = float(np.std(resid))
-        model = self._make().fit(X, y)
+        model = self._make().fit(self._design(frame)[0], y)
         return model, {"mape": round(mape, 4), "r2": round(r2, 4), "sigma_log": round(sigma, 4), "n": int(len(y))}
+
+    def refit_excluding(self, ids: set[str]) -> None:
+        """Refit the served model without the given sales. The evaluation runner uses this so a
+        held-out golden record is unseen by the model, not only absent from the comparables."""
+        keep = np.array([p.id not in ids for p in self.ds.properties])
+        frame = self.ds.frame[keep]
+        self.model = self._make().fit(self._design(frame)[0], np.log(frame["salePrice"].values))
 
     def _row(self, subject) -> np.ndarray:
         st = self.ds.neighborhood_stats.get(subject.neighborhood, {})

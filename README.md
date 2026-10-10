@@ -19,7 +19,7 @@ and a DeepEval quality suite. It is exposed as a FastAPI microservice with a Nex
 | 6 | Dataset details | [`docs/Dataset_Details.pdf`](docs/Dataset_Details.pdf) · sample data [`data/sample_data/`](data/sample_data/) |
 | 7 | Presentation deck | [`presentation/Project_Presentation.pptx`](presentation/Project_Presentation.pptx) · speaker script [`docs/PRESENTATION.md`](docs/PRESENTATION.md) |
 | 8 | Evaluation report | [`docs/Evaluation_Report.pdf`](docs/Evaluation_Report.pdf) · raw results [`backend/evals/results/`](backend/evals/results/) |
-| 9 | Test cases | [`backend/tests/`](backend/tests/) (44 pytest tests) · golden set [`backend/evals/golden_set.json`](backend/evals/golden_set.json) · UI run [`docs/testing/`](docs/testing/) |
+| 9 | Test cases | [`backend/tests/`](backend/tests/) (64 pytest tests) · golden set [`backend/evals/golden_set.json`](backend/evals/golden_set.json) · UI run [`docs/testing/`](docs/testing/) |
 
 ## Project overview
 
@@ -46,7 +46,7 @@ to a client, lender or auditor.
 - **Speed:** from hours of record searching to a sub-second answer (about 140 ms in rules mode, about 3 s with the LLM).
 - **Defensibility:** every figure traceable to a historical sale or a computation, with appraisal-style adjustments.
 - **Consistency:** the same comparable-selection criteria applied to every request.
-- **Trust:** guardrails on input, no LLM-invented numbers, an independent judge, and a measurable accuracy record (9.8 % MAPE on held-out sales).
+- **Trust:** guardrails on input, no LLM-invented numbers, an independent judge, and a measurable accuracy record (9.6 % MAPE on held-out sales).
 - **Continuous improvement:** user corrections flow back into the evaluation set.
 
 ## Solution summary
@@ -62,9 +62,9 @@ to a client, lender or auditor.
 | Comparable-property prioritization | Appraisal scoring with surfaced reasons and $ adjustments (`agents/comparables.py`) |
 | API endpoints | 11 FastAPI endpoints, OpenAPI at `/docs` |
 | DeepEval | `evals/run_deepeval.py`: Faithfulness, Answer Relevancy, Contextual Precision/Recall, Hallucination, custom MAPE |
-| Property price prediction | HistGradientBoosting on log(price): 5-fold CV MAPE 9.5 %, R² 0.89, feature contributions (`agents/pricing.py`) |
+| Property price prediction | HistGradientBoosting on log(price): 5-fold CV MAPE 9.6 %, R² 0.89, feature contributions (`agents/pricing.py`) |
 | LLM-as-judge for valuation validation | Five criteria, independent prompt, bounded by deterministic checks, retry on rejection (`agents/judge.py`) |
-| Multi-agent valuation collaboration | Typed state graph of 8 agents with a judge → retriever retry edge and a full trace (`graph.py`) |
+| Multi-agent valuation collaboration | LangGraph `StateGraph` of 8 agents with a judge → retriever retry edge and a full trace (`graph.py`) |
 | Property value risk prediction | Dispersion, coverage, method divergence, volatility, age → 0–100 (`agents/risk.py`) |
 | Feature and location impact analysis | Hedonic log-linear OLS with neighborhood fixed effects (`agents/impact.py`), `/compare` |
 | Feedback loop | SQLite store joined to request ids; corrections become evaluation cases automatically (`feedback.py`) |
@@ -79,7 +79,7 @@ to a client, lender or auditor.
 | Embedding model | **BAAI/bge-small-en-v1.5** (384-d) via **fastembed** (ONNX, CPU, no PyTorch). Chosen by benchmark over all-MiniLM-L6-v2, bge-base-en-v1.5 and LSA; LSA is the offline fallback. |
 | Vector database | **FAISS** (`faiss-cpu`, `IndexFlatIP`: exact cosine with filter-aware search) |
 | Keyword search | rank-bm25 (Okapi BM25) |
-| Frameworks | FastAPI, Pydantic v2, Uvicorn · scikit-learn, pandas, numpy, scipy · Anthropic SDK · DeepEval · pytest · Next.js 16 + Tailwind (frontend) |
+| Frameworks | FastAPI, Pydantic v2, Uvicorn · scikit-learn, pandas, numpy, scipy · Anthropic SDK · LangGraph (agent orchestration) · DeepEval · pytest · Next.js 16 + Tailwind (frontend) |
 | Storage | SQLite (request log, feedback) · on-disk cache for embeddings and model |
 
 Why each was chosen, and the alternatives considered: [`design/Design_Document.pdf`](design/Design_Document.pdf), §3.
@@ -155,7 +155,7 @@ the backend. Without a reachable backend the UI falls back to clearly labelled d
 **Tests and evaluation**
 
 ```bash
-pytest -q                                           # 44 tests, ~3 s, offline (run from repo root or backend/)
+pytest -q                                           # 64 tests, ~5 s, offline (run from repo root or backend/)
 cd backend
 python evals/run_eval.py                            # built-in evaluation (no key), exits 1 on regression
 python evals/benchmark_embeddings.py                # embedding-model benchmark (no key)
@@ -212,7 +212,7 @@ curl -s -X POST http://localhost:8000/api/v1/predict -H 'Content-Type: applicati
   -d '{"neighborhood": "Somerst", "grLivArea": 2000, "yearBuilt": 2005, "overallQual": 8, "bedrooms": 4, "garageCars": 2}'
 ```
 
-- **Prediction:** **$288,000** (90 % interval $230,000 – $360,500), model CV MAPE 9.5 %, R² 0.89
+- **Prediction:** **$288,000** (90 % interval $229,500 – $361,000), model CV MAPE 9.6 %, R² 0.89
 - **Top contributions vs a median home:** living area +$75,302 · quality +$42,374 · neighborhood +$37,715 · year built +$24,445 · basement +$17,824
 
 ### 5. Guardrail: prompt injection is blocked
@@ -229,16 +229,16 @@ Every endpoint, with full request and response samples: [`docs/API_Documentation
 
 ## Evaluation results
 
-Built-in runner, 61 hold-out cases (each subject excluded from its own comparables), rules engine:
+Built-in runner, 61 hold-out cases (each subject excluded from its own comparables and from model training), rules engine:
 
 | Metric | Score | Threshold |
 |---|---|---|
-| Valuation MAPE vs actual sale price | **9.8 %** | ≤ 15 % |
-| True price inside recommended range | **82 %** | ≥ 70 % |
-| Contextual precision / recall of comparables | **84 % / 91 %** | ≥ 70 % |
+| Valuation MAPE vs actual sale price | **9.6 %** | ≤ 15 % |
+| True price inside recommended range | **80 %** | ≥ 70 % |
+| Contextual precision / recall of comparables | **91 % / 97 %** | ≥ 70 % |
 | Faithfulness (figures traceable to evidence) · hallucination | **100 % · 0 %** | ≥ 85 % · ≤ 10 % |
 | Intent accuracy · guardrail accuracy | **98 % · 100 %** | ≥ 85 % · ≥ 95 % |
-| Latency p50 / p95 | 137 ms / 176 ms | — |
+| Latency p50 / p95 | 124 ms / 156 ms | — |
 
 Embedding benchmark (55 queries, dense precision@10): bge-small **0.649** · bge-base 0.627 · LSA 0.566 ·
 MiniLM 0.534. Full methodology, the LLM-engine run, judge agreement, tests and limitations:

@@ -1,9 +1,9 @@
 """LLM-as-judge for valuation validation.
 
-Five criteria, each with a deterministic check the judge must agree with or
-override with a reason. This keeps the judge *independent* (separate prompt,
-sees only evidence) while never letting it approve something the numbers
-contradict. Without an LLM the deterministic checks stand alone."""
+Five criteria, each with a deterministic check. The LLM judge is *independent*
+(separate prompt, sees only evidence) and may fail a criterion the rules passed,
+but it can never pass one the numbers failed, and its verdict is never more
+favourable than the deterministic one. Without an LLM the checks stand alone."""
 from __future__ import annotations
 
 import re
@@ -12,6 +12,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.agents.llm import LLM
+from app.agents.valuer import comp_weighted
 from app.schemas import Comparable, JudgeCriterion, JudgeVerdict, PricePrediction, Valuation
 
 
@@ -36,7 +37,10 @@ SYSTEM = (
 
 
 def _numbers(text: str) -> set[int]:
-    return {int(n.replace(",", "")) for n in re.findall(r"\$?(\d{1,3}(?:,\d{3})+|\d{4,7})", text)}
+    nums = {int(n.replace(",", "")) for n in re.findall(r"\$?(\d{1,3}(?:,\d{3})+|\d{4,7})", text)}
+    # Shorthand such as "$185k" or "$1.2M" must be checked too, or it slips past grounding.
+    nums |= {int(float(n) * (1_000 if u.lower() == "k" else 1_000_000)) for n, u in re.findall(r"\$(\d+(?:\.\d+)?)\s*([kKmM])\b", text)}
+    return nums
 
 
 def deterministic_checks(subject, comps: list[Comparable], v: Valuation, pred: PricePrediction, answer: str) -> list[JudgeCriterion]:
@@ -44,7 +48,9 @@ def deterministic_checks(subject, comps: list[Comparable], v: Valuation, pred: P
     div = abs(pred.prediction - v.estimate) / max(v.estimate, 1)
     adj_ok = all(abs(sum(a.amount for a in c.adjustments)) <= 0.3 * c.property.salePrice for c in comps) if comps else False
     width = (v.high - v.low) / max(v.estimate, 1)
-    known = {v.estimate, v.low, v.high, pred.prediction, pred.low, pred.high, v.pricePerSqft, subject.grLivArea, subject.yearBuilt, subject.lotArea, subject.totalBsmtSF}
+    comp_est, spread = comp_weighted(comps)  # the valuer is shown both figures and may cite them
+    known = {v.estimate, v.low, v.high, pred.prediction, pred.low, pred.high, v.pricePerSqft, subject.grLivArea, subject.yearBuilt, subject.lotArea, subject.totalBsmtSF,
+             int(round(comp_est / 500) * 500), int(spread)}
     for c in comps:
         known |= {c.property.salePrice, c.adjustedPrice, c.property.grLivArea, c.property.yearBuilt, c.property.saleYear, c.property.lotArea, c.property.totalBsmtSF, c.property.yearRemodAdd}
         known |= {abs(a.amount) for a in c.adjustments}
@@ -93,9 +99,14 @@ def judge(llm: LLM, subject, comps: list[Comparable], v: Valuation, pred: PriceP
     out, engine = llm.parse(SYSTEM, user, LLMJudge, max_tokens=700)
     if out is None:
         return JudgeVerdict(verdict=base_verdict, score=base_score, criteria=checks, summary=summaries[base_verdict]), "rules"
-    criteria = [JudgeCriterion(name=d.name, pass_=c.passed if c.name.lower() == d.name.lower() else d.pass_, note=c.note or d.note) for c, d in zip(out.criteria, checks)]
-    # Hard floor: the judge may not approve an ungrounded narrative.
-    if not checks[3].pass_:
-        criteria[3] = checks[3]
-    score = round(0.5 * out.score + 0.5 * score_from(criteria), 3)
+    # One-directional override: a deterministic FAIL stands (with its numeric note); the LLM
+    # may only turn a PASS into a FAIL. Mismatched criterion names keep the deterministic check.
+    criteria = [
+        JudgeCriterion(name=d.name, pass_=c.passed, note=c.note or d.note) if d.pass_ and c.name.lower() == d.name.lower() else d
+        for c, d in zip(out.criteria, checks)
+    ]
+    # The LLM's holistic score can lower the rule score but never raise it, so the verdict is
+    # never more favourable than the deterministic one.
+    rule_score = score_from(criteria)
+    score = round(min(0.5 * out.score + 0.5 * rule_score, rule_score), 3)
     return JudgeVerdict(verdict=verdict_from(score, criteria), score=score, criteria=criteria, summary=out.summary), engine

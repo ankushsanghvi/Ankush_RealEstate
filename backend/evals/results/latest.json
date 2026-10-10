@@ -1,6 +1,6 @@
 {
-  "runId": "eval_2026-10-08_1517",
-  "ranAt": "2026-10-08T15:17:59.352075+00:00",
+  "runId": "eval_2026-10-09_1612",
+  "ranAt": "2026-10-09T16:12:43.885929+00:00",
   "cases": 61,
   "metrics": [
     {
@@ -11,21 +11,21 @@
     },
     {
       "name": "Answer relevancy",
-      "score": 0.9821,
+      "score": 1.0,
       "threshold": 0.8,
-      "passRate": 0.9821
+      "passRate": 1.0
     },
     {
       "name": "Contextual precision",
-      "score": 0.8371,
+      "score": 0.9085,
       "threshold": 0.7,
-      "passRate": 0.8036
+      "passRate": 0.875
     },
     {
       "name": "Contextual recall",
-      "score": 0.9107,
+      "score": 0.9702,
       "threshold": 0.7,
-      "passRate": 0.8571
+      "passRate": 0.9286
     },
     {
       "name": "Hallucination",
@@ -35,15 +35,15 @@
     },
     {
       "name": "Valuation MAPE",
-      "score": 0.0984,
+      "score": 0.0962,
       "threshold": 0.15,
-      "passRate": 0.7778
+      "passRate": 0.8
     },
     {
       "name": "Range coverage",
-      "score": 0.8222,
+      "score": 0.8,
       "threshold": 0.7,
-      "passRate": 0.8222
+      "passRate": 0.8
     },
     {
       "name": "Intent accuracy",
@@ -58,7 +58,7 @@
       "passRate": 1.0
     }
   ],
-  "judgeAgreement": 0.7111,
+  "judgeAgreement": 0.7556,
   "history": [
     {
       "date": "Oct 07",
@@ -83,6 +83,12 @@
       "faithfulness": 1.0,
       "relevancy": 0.982,
       "precision": 0.837
+    },
+    {
+      "date": "Oct 09",
+      "faithfulness": 1.0,
+      "relevancy": 1.0,
+      "precision": 0.908
     }
   ],
   "feedback": {
@@ -90,7 +96,7 @@
     "negative": 1,
     "corrected": 1
   },
-  "latencyP50": 137,
-  "latencyP95": 176,
+  "latencyP50": 124,
+  "latencyP95": 156,
   "source": "builtin"
 }

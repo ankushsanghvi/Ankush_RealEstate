@@ -64,21 +64,24 @@ export function Shell({ children, title, subtitle }: { children: React.ReactNode
         </nav>
         <div className={cn("border-t border-line p-3", collapsed && "flex justify-center")}>
           {collapsed ? (
-            <Circle size={10} className={cn(health?.mode === "live" ? "fill-good text-good" : "fill-sun text-sun")} />
+            <Circle size={10} className={cn(health?.mode === "live" ? (health.ok ? "fill-good text-good" : "fill-critical text-critical") : "fill-sun text-sun")} />
           ) : (
             <div className="rounded-xl bg-surface-2 p-3 text-[12px]">
               <div className="flex items-center justify-between">
                 <span className="text-ink-3">Backend</span>
                 {health === null ? (
                   <Badge tone="outline">checking…</Badge>
-                ) : health.mode === "live" ? (
+                ) : health.mode === "live" && health.ok ? (
                   <Badge tone="good"><span className="h-1.5 w-1.5 rounded-full bg-good" /> live · {health.latencyMs}ms</Badge>
+                ) : health.mode === "live" ? (
+                  <Badge tone="critical"><span className="h-1.5 w-1.5 rounded-full bg-critical" /> unreachable</Badge>
                 ) : (
                   <Badge tone="warning"><span className="h-1.5 w-1.5 rounded-full bg-sun" /> demo mode</Badge>
                 )}
               </div>
-              {health?.mode === "demo" && <p className="mt-2 leading-snug text-ink-3">No API reachable. Showing deterministic demo data so the UI stays usable.</p>}
-              {health?.mode === "live" && <p className="mt-2 leading-snug text-ink-3">{health.records?.toLocaleString()} records indexed · {health.engine === "llm" ? `LLM agents (${health.llmModel})` : "rules engine (no LLM key)"}</p>}
+              {health?.mode === "demo" && <p className="mt-2 leading-snug text-ink-3">No API configured. Showing deterministic demo data so the UI stays usable.</p>}
+              {health?.mode === "live" && !health.ok && <p className="mt-2 leading-snug text-ink-3">The API is not responding (it may be waking from sleep). Queries will show an error until it is back.</p>}
+              {health?.mode === "live" && health.ok && <p className="mt-2 leading-snug text-ink-3">{health.records?.toLocaleString()} records indexed · {health.engine === "llm" ? `LLM agents (${health.llmModel})` : "rules engine (no LLM key)"}</p>}
               {health?.llmError && <p className="mt-1.5 rounded-md bg-[color:var(--serious-soft)] px-2 py-1 leading-snug text-[11.5px] text-[color:var(--status-serious)]">LLM degraded → rules: {health.llmError}</p>}
             </div>
           )}

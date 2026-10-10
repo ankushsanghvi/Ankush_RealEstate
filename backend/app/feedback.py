@@ -25,11 +25,15 @@ class FeedbackStore:
         with self._lock, self._conn() as c:
             c.execute("INSERT OR REPLACE INTO requests VALUES (?,?,?,?,?,?,?,?)", (request_id, time.time(), query, estimate, json.dumps(subject or {}), verdict, engine, latency_ms))
 
-    def add_feedback(self, request_id: str, rating: str, corrected: int | None, comment: str | None) -> dict:
+    def add_feedback(self, request_id: str, rating: str, corrected: int | None, comment: str | None) -> dict | None:
+        """Store feedback against a logged request. Returns None (and stores nothing) when the
+        request id is unknown, so the table never holds orphans that inflate the counts."""
         with self._lock, self._conn() as c:
-            c.execute("INSERT INTO feedback (request_id, created_at, rating, corrected_value, comment) VALUES (?,?,?,?,?)", (request_id, time.time(), rating, corrected, comment))
             row = c.execute("SELECT query, estimate FROM requests WHERE request_id=?", (request_id,)).fetchone()
-        return {"linked": row is not None, "query": row[0] if row else None, "estimate": row[1] if row else None}
+            if row is None:
+                return None
+            c.execute("INSERT INTO feedback (request_id, created_at, rating, corrected_value, comment) VALUES (?,?,?,?,?)", (request_id, time.time(), rating, corrected, comment))
+        return {"linked": True, "query": row[0], "estimate": row[1]}
 
     def counts(self) -> dict:
         with self._conn() as c:

@@ -94,6 +94,7 @@ class Valuation(BaseModel):
     method: Literal["comparable_weighted", "ml_model", "ensemble"]
     pricePerSqft: int
     narrative: str
+    priceBasis: str = ""  # what the dollar figures mean: the sale years and market they come from
 
 
 class FeatureContribution(BaseModel):

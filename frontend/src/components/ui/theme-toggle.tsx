@@ -1,20 +1,29 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function ThemeToggle({ className }: { className?: string }) {
-  const [theme, setTheme] = useState<"light" | "dark" | null>(null);
+const media = "(prefers-color-scheme: dark)";
 
-  useEffect(() => {
-    const attr = document.documentElement.getAttribute("data-theme");
-    if (attr === "dark" || attr === "light") setTheme(attr);
-    else setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-  }, []);
+function readTheme(): "light" | "dark" {
+  const attr = document.documentElement.getAttribute("data-theme");
+  if (attr === "dark" || attr === "light") return attr;
+  return window.matchMedia(media).matches ? "dark" : "light";
+}
+
+function subscribe(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  const mq = window.matchMedia(media);
+  mq.addEventListener("change", onChange);
+  return () => { observer.disconnect(); mq.removeEventListener("change", onChange); };
+}
+
+export function ThemeToggle({ className }: { className?: string }) {
+  const theme = useSyncExternalStore(subscribe, readTheme, () => null);
 
   function toggle() {
     const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
     document.documentElement.setAttribute("data-theme", next);
     try { localStorage.setItem("valora-theme", next); } catch {}
   }

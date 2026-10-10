@@ -1,6 +1,6 @@
 # Valora — Evaluation Report
 
-<p class="meta">Built-in run <code>eval_2026-10-08_1517</code> · embedding benchmark 2026-10-08 · 44 automated tests · reproducible with the commands in §9</p>
+<p class="meta">Built-in run <code>eval_2026-10-09_1612</code> · embedding benchmark 2026-10-08 · 64 automated tests · reproducible with the commands in §9</p>
 
 ## 1. What we evaluate and how
 
@@ -13,7 +13,7 @@ Valora is evaluated in layers. Each layer answers a different question:
 | Price-model validation | How accurate is the ML predictor on unseen sales? | 5-fold cross-validation in `backend/app/agents/pricing.py` | No |
 | LLM-graded evaluation | Is the recommendation faithful and relevant, as judged by an LLM? | DeepEval (`backend/evals/run_deepeval.py`) | Yes |
 | Online LLM-as-judge | Is *this specific* answer acceptable? | Judge agent on every request | Optional (rules fallback) |
-| Automated tests | Do the API, guardrails, retrieval and failure paths behave correctly? | pytest, 44 tests | No |
+| Automated tests | Do the API, guardrails, retrieval and failure paths behave correctly? | pytest, 64 tests | No |
 | UI end-to-end | Does the product work for a user? | Scripted browser run, 15 steps, screenshots | No |
 
 **Hold-out principle.** Every valuation case is built from a real sale. That sale is **excluded from
@@ -35,25 +35,28 @@ extra case in the next run. The run below contains 61 cases: 60 golden + 1 human
 
 ## 3. Built-in evaluation results
 
-Rules engine (deterministic, no LLM), 61 cases, FAISS vector store, run `eval_2026-10-08_1517`.
+Rules engine (deterministic, no LLM), 61 cases, FAISS vector store, run `eval_2026-10-09_1612`. Each hold-out
+subject is excluded from its own comparables **and** from the pricing model's training data, so neither half of
+the ensemble has seen the sale it is scored on.
 
 | Metric | Definition | Score | Threshold | Cases passing |
 |---|---|---|---|---|
-| **Valuation MAPE** | mean \|estimate − actual\| / actual | **9.8 %** | ≤ 15 % | 78 % |
-| **Range coverage** | actual price inside the recommended low–high range | **82 %** | ≥ 70 % | 82 % |
-| **Contextual precision** | share of returned comparables in the expected neighborhood with living area within ±25 % | **84 %** | ≥ 70 % | 80 % |
-| **Contextual recall** | at least 3 relevant comparables returned (an appraisal needs ≥ 3), scored min(1, relevant/3) | **91 %** | ≥ 70 % | 86 % |
+| **Valuation MAPE** | mean \|estimate − actual\| / actual | **9.6 %** | ≤ 15 % | 80 % |
+| **Range coverage** | actual price inside the recommended low–high range | **80 %** | ≥ 70 % | 80 % |
+| **Contextual precision** | share of returned comparables in the expected neighborhood with living area within ±25 % | **91 %** | ≥ 70 % | 88 % |
+| **Contextual recall** | at least 3 relevant comparables returned (an appraisal needs ≥ 3), scored min(1, relevant/3) | **97 %** | ≥ 70 % | 93 % |
 | **Faithfulness (groundedness)** | share of figures in the answer that trace to a retrieved record or computed value (±1 %) | **100 %** | ≥ 85 % | 100 % |
 | **Hallucination rate** | 1 − faithfulness | **0 %** | ≤ 10 % | 100 % |
-| **Answer relevancy** | answer names the right neighborhood and gives a price when one was asked | **98 %** | ≥ 80 % | 98 % |
+| **Answer relevancy** | answer names the right neighborhood and gives a price when one was asked | **100 %** | ≥ 80 % | 100 % |
 | **Intent accuracy** | classifier intent = expected intent | **98 %** | ≥ 85 % | 98 % |
 | **Guardrail accuracy** | block / pass decision = expected | **100 %** | ≥ 95 % | 100 % |
 
-Latency over the run: **p50 137 ms, p95 176 ms** per full pipeline (rules engine, Apple-silicon laptop).
+Latency over the run: **p50 124 ms, p95 156 ms** per full pipeline (rules engine, Apple-silicon laptop).
 **All thresholds met.** The runner exits non-zero on any regression, so it can gate CI.
 
 **LLM-engine run.** A stratified 18-case subset was also run with the Claude engine enabled
-(`eval_2026-10-08_0651`, `source: builtin+llm`): faithfulness 100 %, answer relevancy 100 %, contextual
+(`eval_2026-10-08_0651`, `source: builtin+llm`; this run predates the 2026-10-09 reliability fixes and was not
+repeated, to avoid spending LLM credits): faithfulness 100 %, answer relevancy 100 %, contextual
 precision 96 %, contextual recall 100 %, MAPE 7.8 %, range coverage 83 %, intent accuracy 100 %, guardrails
 100 %. Latency rose to p50 3.4 s (three LLM calls per query). The number-producing path is identical in
 both engines, so the valuation figures barely move. The LLM improves phrasing and intent handling on
@@ -62,9 +65,9 @@ unusual wording.
 ### Judge agreement
 
 The online judge's verdict is compared with an oracle: "approve if and only if the estimate is within 15 %
-of the true price". Agreement is **71 %** in rules mode (32 of 45 valuation cases) and **83 %** with the LLM
-engine. The 13 rules-mode disagreements split evenly: 6 where the judge flagged a valuation that was in fact
-within 15 %, and 7 where it approved one that was not. The judge cannot see the true price. It judges evidence
+of the true price". Agreement is **76 %** in rules mode (34 of 45 valuation cases) and **83 %** with the LLM
+engine (earlier run). The 11 rules-mode disagreements split evenly: 5 where the judge flagged a valuation that was in fact
+within 15 %, and 6 where it approved one that was not. The judge cannot see the true price. It judges evidence
 quality (coverage, model agreement, adjustments, grounding, range width), so a well-supported but wrong
 estimate can pass. This is the main motivation for the human feedback loop, and improving judge calibration is
 listed as future work.
@@ -73,13 +76,15 @@ listed as future work.
 
 HistGradientBoostingRegressor on log(SalePrice) with the 12 key numeric features plus neighborhood
 median $/sq ft and median price. Metrics come from **5-fold cross-validation (out-of-fold predictions)**,
-not the training fit:
+not the training fit. The two neighborhood columns are target statistics, so inside each fold they are
+recomputed from the training rows only; computing them over all rows leaked each held-out sale's own price
+into its features (measured effect: MAPE 9.52 % → 9.57 %, small but now honest):
 
 | Metric | Value |
 |---|---|
-| MAPE | **9.5 %** |
+| MAPE | **9.6 %** |
 | R² (log scale) | **0.89** |
-| Residual σ (log) | 0.137 → used for the 90 % prediction interval |
+| Residual σ (log) | 0.138 → used for the 90 % prediction interval |
 | Training rows | 2,927 |
 
 The final valuation is an **ensemble** of the comparable-weighted estimate and this model. The comparable
@@ -115,7 +120,7 @@ measure of how useful the retrieved comparables are for valuation.*
   prices are closer to the truth (comp-APE 18.4 % vs 19.8 % for BM25 alone). That is why the system is hybrid
   rather than keyword-only.
 - These are *unfiltered* retrieval numbers. In production, hard metadata filters and the Comp Analyst's
-  appraisal re-ranking raise contextual precision to 84 % (§3).
+  appraisal re-ranking raise contextual precision to 91 % (§3).
 - The LSA fallback is respectable (hybrid P@10 0.647), so the service degrades gracefully if the neural
   model cannot be downloaded.
 
@@ -146,7 +151,7 @@ LLM-graded framework would double the grading cost without new signal.
 
 ## 7. Automated tests
 
-`pytest` runs **44 tests in about 3 seconds**, offline, with the LLM disabled. All pass.
+`pytest` runs **64 tests in about 5 seconds**, offline, with the LLM disabled. All pass.
 
 | Area | Tests | Highlights |
 |---|---|---|
@@ -155,8 +160,10 @@ LLM-graded framework would double the grading cost without new signal.
 | Guardrails | 8 | PII redaction for phone / SSN / email; injection and off-topic blocking; control-character stripping; truncation |
 | Attribute extraction | 4 | multi-digit bedrooms, half baths, "built in" vs "1850 sq ft", decades; out-of-range clamping |
 | Pipeline edge cases | 3 | filters matching nothing; thin evidence → higher risk and lower confidence; price-difference intent |
-| API boundaries | 10 | `top_k` bounds, missing / overlong query, invalid filters, negative areas, invalid feedback, same-record compare, feedback for unknown request |
+| API boundaries | 10 | `top_k` bounds, missing / overlong query, invalid filters, negative areas, invalid feedback, same-record compare, feedback for an unknown request → 404 with nothing stored |
 | LLM wrapper | 6 | JSON extraction from fenced / prose replies, chat-format structured output, one repair call on invalid JSON, circuit breaker on billing errors, fallback model → `llm-degraded`, rules mode without a key |
+| LangGraph orchestration | 12 | topology; judge-driven retry runs once with a wider pool; guardrail early exit; optional Risk Analyst failure tolerated; a critical failure (Retriever, Pricing Model, Valuer, Judge) stops the run with no estimate; a guardrail crash fails closed; an over-generous LLM judge cannot overturn a deterministic FAIL; grounding catches `$512k` shorthand |
+| Data integrity & intents | 8 | zero bedrooms / basement / baths kept (priors only for missing values); "no basement" / "no garage"; first-mentioned neighborhood is the subject; intent-matched answers stay grounded; price-basis note; CV features use training rows only |
 
 **Bugs found by these tests and fixed:**
 
@@ -178,7 +185,7 @@ dashboard, API reference, dark mode, mobile layout at 390 px, API error formats,
 
 ```bash
 cd backend && source .venv/bin/activate
-pytest -q                                   # 44 tests
+pytest -q                                   # 64 tests
 python evals/run_eval.py                    # built-in evaluation → evals/results/latest.json
 python evals/benchmark_embeddings.py        # embedding benchmark → evals/results/embedding_benchmark.json
 pip install -r requirements-eval.txt
@@ -195,3 +202,10 @@ ANTHROPIC_API_KEY=... python evals/run_deepeval.py 10      # LLM-graded, first 1
   stronger measure.
 - Thin neighborhoods (Green Hills 2 sales, Landmark 1) give low confidence by design. The risk score and
   judge surface this rather than hide it.
+- Comparable adjustments use fixed coefficients (quality 5.5 %/point, age 0.25 %/year, garage 4 %/bay, basement,
+  living area at 0.55 × the comp's $/sq ft). Replacing them with the hedonic model's fitted elasticities was
+  tested on 400 leave-one-out sales: mean comps-only error improved (11.6 % → 11.2 %) but median error worsened
+  (6.8 % → 6.9 %), so the simpler fixed values were kept.
+- Every intent runs through the same valuation pipeline. Similar-property, market and comparison questions get
+  an answer framed for that intent, but there is no time-series trend analysis, and two-property comparisons
+  are handled by the separate `/api/v1/compare` endpoint (Compare page).

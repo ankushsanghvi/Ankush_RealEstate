@@ -47,15 +47,41 @@ def ensemble(comps: list[Comparable], pred: PricePrediction, subject, ds: Datase
     divergence = abs(pred.prediction - comp_est) / max(est, 1) if n else 0.0
     confidence = float(np.clip(0.97 - (half / est) * 1.6 - divergence * 0.8 - (0.05 if same_nb < 2 else 0) - (0.08 if n < 4 else 0), 0.3, 0.95))
     r = lambda x: int(round(x / 500) * 500)
+    y0, y1 = int(ds.frame["saleYear"].min()), int(ds.frame["saleYear"].max())
     v = Valuation(
         estimate=r(est), low=r(est - half), high=r(est + half), confidence=round(confidence, 3),
         method="ensemble" if n else "ml_model", pricePerSqft=int(round(est / max(subject.grLivArea, 1))), narrative="",
+        priceBasis=f"Historical Ames, Iowa sales {y0}–{y1}, in nominal dollars of the sale year; not adjusted to today's market.",
     )
     meta = {"comp_estimate": comp_est, "spread": spread, "w_comp": w_comp, "same_nb": same_nb, "divergence": divergence}
     return v, meta
 
 
-def write_narrative(llm: LLM, query: str, subject, v: Valuation, comps: list[Comparable], pred: PricePrediction, meta: dict) -> tuple[str, str, str]:
+def _intent_lead(intent: str, name: str, comps: list[Comparable]) -> str:
+    """Opening sentence that answers the question type the classifier detected. Every
+    intent runs through the same evidence pipeline (one subject profile, its comparables
+    and an estimate), so non-valuation questions get an honest framing of that evidence
+    instead of a bare price. Only figures already in the comparables are quoted, so the
+    judge can still verify every number."""
+    if not comps or intent == "valuation":
+        return ""
+    if intent == "similar_properties":
+        p = comps[0].property
+        return (f"The closest of {len(comps)} similar sales is {p.id}, a {p.bedroomAbvGr}-bedroom, {p.grLivArea:,} sq ft home built in {p.yearBuilt} "
+                f"that sold for ${p.salePrice:,} in {p.saleYear}. ")
+    if intent == "market_insight":
+        prices = sorted(c.property.salePrice for c in comps)
+        years = sorted(c.property.saleYear for c in comps)
+        span = f"{years[0]}" if years[0] == years[-1] else f"{years[0]}–{years[-1]}"
+        return (f"Valora works from individual historical sales rather than a price index, so this is a snapshot, not a trend: "
+                f"the {len(comps)} most comparable sales ({span}) sold between ${prices[0]:,} and ${prices[-1]:,}. ")
+    if intent in ("comparison", "price_difference"):
+        return (f"This pipeline values one subject profile at a time, so the figures below describe the {name} side of the question; "
+                f"use the Compare page to decompose the price gap between two specific sales. ")
+    return ""
+
+
+def write_narrative(llm: LLM, query: str, subject, v: Valuation, comps: list[Comparable], pred: PricePrediction, meta: dict, intent: str = "valuation") -> tuple[str, str, str]:
     name = NEIGHBORHOOD_NAMES.get(subject.neighborhood, subject.neighborhood)
     top = comps[0] if comps else None
     comp_est = int(round(meta["comp_estimate"] / 500) * 500)
@@ -64,7 +90,7 @@ def write_narrative(llm: LLM, query: str, subject, v: Valuation, comps: list[Com
         f"(comparable-weighted figure ${comp_est:,}). The gradient-boosted model independently predicts ${pred.prediction:,}; the ensemble gives "
         f"{meta['w_comp'] * 100:.0f}% weight to comparables because {'neighborhood coverage is strong' if meta['same_nb'] >= 3 else 'in-neighborhood evidence is limited'}."
     ) if comps else f"No comparable sales matched the filters, so the estimate relies on the ML model alone (${pred.prediction:,})."
-    fallback_answer = (
+    fallback_answer = _intent_lead(intent, name, comps) + (
         f"Based on {len(comps)} prioritized comparable sales, a {subject.bedrooms}-bedroom home of {subject.grLivArea:,} sq ft in {name} built around {subject.yearBuilt} "
         f"with quality grade {subject.overallQual} is estimated at ${v.estimate:,} (range ${v.low:,} – ${v.high:,}, ${v.pricePerSqft}/sq ft)."
         + (f" The strongest comparable is {top.property.id}, which sold for ${top.property.salePrice:,} in {top.property.saleYear} and adjusts to ${top.adjustedPrice:,}." if top else "")
@@ -77,7 +103,8 @@ def write_narrative(llm: LLM, query: str, subject, v: Valuation, comps: list[Com
         for c in comps
     )
     user = (
-        f"User question: {query}\n\nSubject: {subject.as_dict()}\n"
+        f"User question: {query}\nDetected intent: {intent}. Answer that question directly; if the figures below cannot fully answer it "
+        f"(e.g. a price trend, or a gap between two neighborhoods), say what the evidence does show rather than inventing figures.\n\nSubject: {subject.as_dict()}\n"
         f"Comparable-weighted estimate: ${comp_est:,} (spread ${int(meta['spread']):,}); ML prediction: ${pred.prediction:,} (90% interval ${pred.low:,}–${pred.high:,}).\n"
         f"Final ensemble: estimate ${v.estimate:,}, range ${v.low:,}–${v.high:,}, confidence {v.confidence * 100:.0f}%, comparables weight {meta['w_comp'] * 100:.0f}%.\n"
         f"Comparables:\n{comp_lines}"

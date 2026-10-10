@@ -184,6 +184,8 @@ def properties(filters: QueryFilters, limit: int = 3000, offset: int = 0):
 def feedback(payload: FeedbackPayload):
     s = svc()
     res = s.feedback.add_feedback(payload.requestId, payload.rating, payload.correctedValue, payload.comment)
+    if res is None:
+        raise HTTPException(404, f"Unknown requestId '{payload.requestId}'; feedback must reference a request returned by /api/v1/query")
     return {"ok": True, **res, "counts": s.feedback.counts()}
 
 

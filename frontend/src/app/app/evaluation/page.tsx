@@ -13,11 +13,14 @@ import { Check, X, ThumbsUp, ThumbsDown, PenLine } from "lucide-react";
 
 export default function EvaluationPage() {
   const [ev, setEv] = useState<EvalSummary | null>(null);
-  useEffect(() => { getEvaluation().then(setEv); }, []);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { getEvaluation().then(setEv, (e) => setError(e instanceof Error ? e.message : "Request failed")); }, []);
 
   return (
     <Shell title="Evaluation & feedback" subtitle="DeepEval quality suite, judge agreement and the human feedback loop">
-      {!ev ? (
+      {error ? (
+        <Card><CardBody className="pt-5 text-[13.5px] text-ink-2"><span className="font-semibold text-ink">Evaluation results are unavailable.</span> {error}. Metrics are only shown when they come from the backend.</CardBody></Card>
+      ) : !ev ? (
         <div className="grid gap-5 lg:grid-cols-3"><Skeleton className="h-40" /><Skeleton className="h-40" /><Skeleton className="h-40" /></div>
       ) : (
         <div className="space-y-5">

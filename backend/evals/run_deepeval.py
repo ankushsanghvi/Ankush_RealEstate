@@ -75,6 +75,7 @@ def main(limit: int | None = None) -> None:
     cases = [c for c in json.loads((ROOT / "golden_set.json").read_text())["cases"] if c["kind"] != "guardrail"]
     if limit:
         cases = cases[:limit]
+    svc.pricing.refit_excluding({c["source_id"] for c in cases if c.get("source_id")})  # honest hold-out, as in run_eval.py
 
     tests: list[LLMTestCase] = []
     latencies: list[int] = []

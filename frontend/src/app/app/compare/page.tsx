@@ -54,8 +54,7 @@ export default function ComparePage() {
   const [mode, setMode] = useState<"live" | "demo">("demo");
   const [a, setA] = useState("");
   const [b, setB] = useState("");
-  const [result, setResult] = useState<{ diff: number; list: CompareFactor[]; explained: number; narrative: string; live: boolean } | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{ pair: string; diff: number; list: CompareFactor[]; explained: number; narrative: string; live: boolean } | null>(null);
 
   useEffect(() => {
     listProperties({}).then((r) => {
@@ -72,16 +71,16 @@ export default function ComparePage() {
   useEffect(() => {
     if (!pa || !pb) return;
     let alive = true;
-    setLoading(true);
+    const pair = `${pa.id}|${pb.id}`;
     compareProperties(pa.id, pb.id).then((r) => {
       if (!alive) return;
-      if (r) setResult({ diff: r.difference, list: r.factors, explained: r.factors.filter((f) => f.label !== "Unexplained / market noise").reduce((s, f) => s + f.amount, 0), narrative: r.narrative, live: true });
-      else setResult({ ...localFactors(pa, pb), live: false });
-      setLoading(false);
+      if (r) setResult({ pair, diff: r.difference, list: r.factors, explained: r.factors.filter((f) => f.label !== "Unexplained / market noise").reduce((s, f) => s + f.amount, 0), narrative: r.narrative, live: true });
+      else setResult({ pair, ...localFactors(pa, pb), live: false });
     });
     return () => { alive = false; };
   }, [pa, pb]);
 
+  const loading = !!pa && !!pb && result?.pair !== `${pa.id}|${pb.id}`;
   const maxAbs = Math.max(...(result?.list.map((f) => Math.abs(f.amount)) ?? [1]), 1);
 
   return (

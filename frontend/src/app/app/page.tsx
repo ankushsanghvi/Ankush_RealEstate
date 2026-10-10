@@ -9,10 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   ValuationCard, AnswerCard, PipelineStatusCard, ComparablesCard, PredictionCard, JudgeCard, RiskCard, ImpactCard, AgentTraceCard, FeedbackCard, type FullResponse,
 } from "@/components/app/result-cards";
-import { runQuery } from "@/lib/api";
+import { ApiError, runQuery } from "@/lib/api";
 import { describeFilters, hasActiveFilters } from "@/lib/filters";
 import type { QueryFilters, QueryResponse } from "@/lib/types";
-import { ShieldAlert, Compass } from "lucide-react";
+import { ShieldAlert, Compass, AlertTriangle, RotateCcw } from "lucide-react";
 
 const STAGES = ["Validating input", "Classifying intent", "Hybrid retrieval", "Prioritizing comparables", "Running pricing model", "Assessing risk", "Synthesizing valuation", "Judge review"];
 
@@ -41,6 +41,7 @@ export default function ConsolePage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<QueryResponse | null>(null);
   const [history, setHistory] = useState<QueryResponse[]>([]);
+  const [error, setError] = useState<{ query: string; message: string } | null>(null);
 
   const filtersActive = hasActiveFilters(filters);
 
@@ -49,10 +50,15 @@ export default function ConsolePage() {
     const q = text.trim() || describeFilters(filters);
     if (!q || loading) return;
     setLoading(true);
+    setError(null);
     try {
       const r = await runQuery(q, filters);
       setResult(r);
       setHistory((h) => [r, ...h].slice(0, 6));
+    } catch (e) {
+      // A failed backend call is shown as an error, never replaced with demo numbers.
+      setResult(null);
+      setError({ query: q, message: e instanceof ApiError ? e.message : "Unexpected error" });
     } finally {
       setLoading(false);
     }
@@ -83,6 +89,15 @@ export default function ConsolePage() {
           <AnimatePresence mode="wait">
             {loading ? (
               <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><LoadingState /></motion.div>
+            ) : error ? (
+              <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="card flex items-start gap-3 border-critical/40 p-5">
+                <AlertTriangle size={20} className="mt-0.5 shrink-0 text-critical" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[15px] font-semibold text-ink">The valuation service did not return a result</div>
+                  <p className="mt-1 text-[13.5px] text-ink-2">{error.message}. No estimate is shown rather than placeholder figures.</p>
+                  <button onClick={() => submit(error.query)} className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12.5px] text-ink-2 hover:bg-surface-2 hover:text-ink"><RotateCcw size={13} /> Retry</button>
+                </div>
+              </motion.div>
             ) : result ? (
               <motion.div key={result.requestId} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }} className="space-y-5">
                 <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-ink-3">
@@ -92,7 +107,15 @@ export default function ConsolePage() {
                   <Badge tone="outline" className="font-mono">{result.requestId}</Badge>
                 </div>
 
-                {!result.guardrails.passed || !result.valuation || !result.prediction || !result.judge || !result.risk || !result.classification ? (
+                {result.guardrails.passed && (!result.valuation || !result.prediction || !result.judge || !result.classification) ? (
+                  <div className="card flex items-start gap-3 border-critical/40 p-5">
+                    <AlertTriangle size={20} className="mt-0.5 shrink-0 text-critical" />
+                    <div>
+                      <div className="text-[15px] font-semibold text-ink">Valuation could not be completed</div>
+                      <p className="mt-1 text-[13.5px] text-ink-2">{result.answer || "An agent in the pipeline failed. See the trace below."}</p>
+                    </div>
+                  </div>
+                ) : !result.guardrails.passed || !result.valuation || !result.prediction || !result.judge || !result.classification ? (
                   <div className="card flex items-start gap-3 border-critical/40 p-5">
                     <ShieldAlert size={20} className="mt-0.5 text-critical" />
                     <div>
@@ -106,12 +129,12 @@ export default function ConsolePage() {
                     <AnswerCard r={result as FullResponse} />
                     <div className="grid gap-5 lg:grid-cols-2">
                       <JudgeCard r={result as FullResponse} />
-                      <RiskCard r={result as FullResponse} />
+                      {result.risk && <RiskCard r={result as FullResponse} />}
                     </div>
                     <ComparablesCard r={result as FullResponse} />
                     <PredictionCard r={result as FullResponse} />
                     <div className="grid gap-5 lg:grid-cols-2">
-                      <ImpactCard r={result as FullResponse} />
+                      {result.impact.length > 0 && <ImpactCard r={result as FullResponse} />}
                       <div className="space-y-5">
                         <FeedbackCard r={result} />
                       </div>

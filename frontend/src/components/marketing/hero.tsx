@@ -22,7 +22,7 @@ function useTypewriter(lines: string[], speed = 28, pause = 2200) {
     if (!deleting && text.length < full.length) t = setTimeout(() => setText(full.slice(0, text.length + 1)), speed);
     else if (!deleting && text.length === full.length) t = setTimeout(() => setDeleting(true), pause);
     else if (deleting && text.length > 0) t = setTimeout(() => setText(full.slice(0, text.length - 1)), 10);
-    else { setDeleting(false); setI((i + 1) % lines.length); }
+    else t = setTimeout(() => { setDeleting(false); setI((i + 1) % lines.length); }, 0);
     return () => clearTimeout(t);
   }, [text, deleting, i, lines, speed, pause]);
   return text;

@@ -5,8 +5,10 @@ Eight agent nodes share one typed `State`. Each node is a plain function
 tool, output) so the UI can show exactly what happened. Three edges are
 conditional: Guardrail and Classifier can end the run early, and the Judge can
 send the result back to the Retriever for one second pass with a wider
-comparable pool. The graph is synchronous and deterministic apart from the LLM
-calls, which all have rule-based fallbacks."""
+comparable pool. If a critical agent raises, every following edge routes to END
+and the response says which agent failed instead of returning a partial
+valuation; only the Risk Analyst is optional. The graph is synchronous and
+deterministic apart from the LLM calls, which all have rule-based fallbacks."""
 from __future__ import annotations
 
 import logging
@@ -62,16 +64,20 @@ class State:
     narrative: str = ""
     blocked: bool = False
     retry: bool = False
+    failed: str | None = None  # name of the critical agent that raised, if any
 
 
 Node = Callable[[State], State]
 _FIELDS = [f.name for f in fields(State)]
+# Agents whose failure leaves the valuation intact: the run continues without their output.
+OPTIONAL = {"Risk Analyst"}
 
 
 def _traced(name: str, role: str, tool: str, fn: Node) -> Callable[[State], dict]:
     """Wrap an agent as a LangGraph node: run it, append an AgentStep to the trace,
     and hand the updated state back to LangGraph as a full channel update. A failing
-    node is recorded as an error step instead of aborting the run."""
+    node is recorded as an error step; a critical one also marks the run as failed so
+    the routers below stop the graph."""
     def node(state: State) -> dict:
         t0 = time.perf_counter()
         try:
@@ -80,6 +86,8 @@ def _traced(name: str, role: str, tool: str, fn: Node) -> Callable[[State], dict
         except Exception as e:  # noqa: BLE001
             log.exception("node %s failed", name)
             status, output = "error", f"{type(e).__name__}: {e}"[:160]
+            if name not in OPTIONAL:
+                state.failed = name
         state.trace.append(AgentStep(agent=name, role=role, status=status, durationMs=int((time.perf_counter() - t0) * 1000), output=output, tool=tool or None))
         return {k: getattr(state, k) for k in _FIELDS}
     return node
@@ -143,7 +151,7 @@ def n_predict(s: State) -> State:
 
 def n_value(s: State) -> State:
     s.valuation, s.meta = ensemble(s.comps, s.prediction, s.subject, s.svc.ds)
-    s.narrative, s.answer, eng = write_narrative(s.svc.llm, s.sanitized, s.subject, s.valuation, s.comps, s.prediction, s.meta)
+    s.narrative, s.answer, eng = write_narrative(s.svc.llm, s.sanitized, s.subject, s.valuation, s.comps, s.prediction, s.meta, s.classification.intent)
     s.valuation.narrative = s.narrative
     s.engines.append(eng)
     return _note(s, f"${s.valuation.estimate:,} · conf {s.valuation.confidence * 100:.0f}% · comps weight {s.meta['w_comp'] * 100:.0f}%")
@@ -166,15 +174,19 @@ def n_judge(s: State) -> State:
 
 
 def route_after_guardrail(s: State) -> str:
-    return END if s.blocked else "Classifier"
+    return END if s.blocked or s.failed else "Classifier"
 
 
 def route_after_classify(s: State) -> str:
-    return END if s.blocked else "Retriever"
+    return END if s.blocked or s.failed else "Retriever"
 
 
 def route_after_judge(s: State) -> str:
-    return "Retriever" if s.retry else END
+    return "Retriever" if s.retry and not s.failed else END
+
+
+def _unless_failed(target: str) -> Callable[[State], str]:
+    return lambda s: END if s.failed else target
 
 
 # name → (role, tool, fn); the role and tool are what the UI shows for each trace step.
@@ -197,11 +209,8 @@ def build_graph():
     g.add_edge(START, "Guardrail")
     g.add_conditional_edges("Guardrail", route_after_guardrail, ["Classifier", END])
     g.add_conditional_edges("Classifier", route_after_classify, ["Retriever", END])
-    g.add_edge("Retriever", "Comp Analyst")
-    g.add_edge("Comp Analyst", "Pricing Model")
-    g.add_edge("Pricing Model", "Valuer")
-    g.add_edge("Valuer", "Risk Analyst")
-    g.add_edge("Risk Analyst", "Judge")
+    for a, b in [("Retriever", "Comp Analyst"), ("Comp Analyst", "Pricing Model"), ("Pricing Model", "Valuer"), ("Valuer", "Risk Analyst"), ("Risk Analyst", "Judge")]:
+        g.add_conditional_edges(a, _unless_failed(b), [b, END])
     g.add_conditional_edges("Judge", route_after_judge, ["Retriever", END])
     return g.compile()
 
@@ -214,6 +223,13 @@ def run_pipeline(svc: Services, query: str, filters: QueryFilters, top_k: int = 
     s = State(**out)
     engine = "rules" if not s.engines or all(e == "rules" for e in s.engines) else ("llm-degraded" if any(e in ("rules", "llm-degraded") for e in s.engines) else "llm")
     latency = int((time.perf_counter() - s.started) * 1000)
+    if s.failed:
+        step = next((t for t in reversed(s.trace) if t.agent == s.failed and t.status == "error"), None)
+        log.error("pipeline %s stopped: %s failed", s.request_id, s.failed)
+        guardrails = s.guardrails or GuardrailResult(passed=False, checks=[GuardrailCheck(name="Guardrail", status="fail", detail="Guardrail agent failed; request rejected (fail-closed)")])
+        return QueryResponse(requestId=s.request_id, engine=engine, query=query, latencyMs=latency, guardrails=guardrails, classification=s.classification, agentTrace=s.trace,
+                             answer=f"The valuation could not be completed because the {s.failed} agent failed ({step.output if step else 'unknown error'}). "
+                                    "No estimate is returned rather than a partial or unvalidated one; please retry.")
     if s.blocked:
         return QueryResponse(requestId=s.request_id, engine=engine, query=query, latencyMs=latency, guardrails=s.guardrails, classification=s.classification, agentTrace=s.trace,
                              answer="The request was blocked by input guardrails before any retrieval or model call. Rephrase it as a property description or valuation question.")

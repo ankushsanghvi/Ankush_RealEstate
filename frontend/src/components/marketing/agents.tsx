@@ -32,7 +32,7 @@ export function Agents() {
               </p>
               <ul className="mt-8 space-y-3 text-[14px] text-ink-2">
                 <li className="flex gap-3"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" /> Every hand-off is logged with duration, tool and output, visible in the workspace trace.</li>
-                <li className="flex gap-3"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" /> Structured outputs (JSON schemas) between agents, so no agent parses another's prose.</li>
+                <li className="flex gap-3"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" /> Structured outputs (JSON schemas) between agents, so no agent parses another&apos;s prose.</li>
                 <li className="flex gap-3"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" /> Model fallback: if the primary LLM times out, the graph degrades to a smaller model and marks the response.</li>
               </ul>
             </div>

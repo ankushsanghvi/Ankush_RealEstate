@@ -24,14 +24,17 @@ class Subject:
         nb = attrs.neighborhood or _mode([p.neighborhood for p in pool])
         self.neighborhood = nb
         st = ds.neighborhood_stats.get(nb, {})
-        self.bedrooms = attrs.bedrooms or 3
+        # Zero is a real answer for bedrooms (studio), garage, basement and full baths, so only
+        # None falls back to a prior. Zero living area / year / quality / lot is impossible and
+        # is treated as missing.
+        self.bedrooms = attrs.bedrooms if attrs.bedrooms is not None else 3
         self.grLivArea = attrs.grLivArea or int(_median([p.grLivArea for p in pool]))
         self.yearBuilt = attrs.yearBuilt or int(st.get("median_year", 1975))
         self.overallQual = attrs.overallQual or int(round(st.get("median_qual", 6)))
         self.garageCars = attrs.garageCars if attrs.garageCars is not None else 2
-        self.totalBsmtSF = attrs.totalBsmtSF or int(self.grLivArea * 0.7)
+        self.totalBsmtSF = attrs.totalBsmtSF if attrs.totalBsmtSF is not None else int(self.grLivArea * 0.7)
         self.lotArea = attrs.lotArea or 9000
-        self.fullBath = attrs.fullBath or (2 if self.grLivArea > 1400 else 1)
+        self.fullBath = attrs.fullBath if attrs.fullBath is not None else (2 if self.grLivArea > 1400 else 1)
         self.explicit = {k for k, v in attrs.model_dump().items() if v is not None}
 
     def as_dict(self) -> dict:

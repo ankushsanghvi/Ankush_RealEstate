@@ -80,6 +80,7 @@ export interface Valuation {
   method: "comparable_weighted" | "ml_model" | "ensemble";
   pricePerSqft: number;
   narrative: string;
+  priceBasis?: string;       // sale years / market the figures come from, e.g. "Historical Ames, Iowa sales 2006–2010 …"
 }
 
 export interface PricePrediction {

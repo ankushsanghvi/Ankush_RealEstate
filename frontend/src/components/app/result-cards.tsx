@@ -50,6 +50,7 @@ export function ValuationCard({ r }: { r: FullResponse }) {
             </div>
           </div>
           <p className="mt-5 text-[13.5px] leading-relaxed text-ink-2">{v.narrative}</p>
+          {v.priceBasis && <p className="mt-3 flex items-start gap-1.5 text-[12px] leading-snug text-ink-3"><Clock size={12} className="mt-0.5 shrink-0" /> {v.priceBasis}</p>}
         </div>
         <div className="border-t border-line bg-paper p-6 lg:border-l lg:border-t-0">
           <div className="eyebrow mb-3">Where the comparables land</div>
@@ -276,19 +277,29 @@ export function ImpactCard({ r }: { r: FullResponse }) {
 /* ---------------- Agent trace ---------------- */
 export function AgentTraceCard({ r }: { r: QueryResponse }) {
   const total = r.agentTrace.reduce((s, a) => s + a.durationMs, 0);
+  // When the judge rejects the first pass, the retriever onwards runs again, so an agent can appear twice.
+  const seen = new Map<string, number>();
+  const passes = r.agentTrace.map((a) => {
+    const n = (seen.get(a.agent) ?? 0) + 1;
+    seen.set(a.agent, n);
+    return n;
+  });
+  const agents = seen.size;
+  const steps = r.agentTrace.length;
   return (
     <Card>
-      <CardHeader eyebrow="Multi-agent trace" title={`${r.agentTrace.length} agents · ${(total / 1000).toFixed(2)}s`} action={<Badge tone="outline" className="font-mono">{r.requestId}</Badge>} />
+      <CardHeader eyebrow="Multi-agent trace" title={`${agents} agents${steps > agents ? ` · ${steps} steps` : ""} · ${(total / 1000).toFixed(2)}s`} action={<Badge tone="outline" className="font-mono">{r.requestId}</Badge>} />
       <CardBody>
         <ol className="relative space-y-0">
           <div className="absolute left-[7px] top-2 bottom-2 w-px bg-line" />
           {r.agentTrace.map((a, i) => (
-            <motion.li key={a.agent} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="relative flex gap-4 py-2 pl-7">
+            <motion.li key={`${a.agent}-${passes[i]}`} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="relative flex gap-4 py-2 pl-7">
               <span className={cn("absolute left-0 top-3.5 h-[15px] w-[15px] rounded-full border-[3px] border-surface", a.status === "done" ? "bg-sage" : a.status === "error" ? "bg-critical" : "bg-ink-3")} />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2 text-[13px]">
                   <span className="font-medium text-ink">{a.agent}</span>
                   <span className="text-ink-3">{a.role}</span>
+                  {passes[i] > 1 && <span className="rounded bg-sun-soft px-1.5 font-mono text-[10.5px] text-ink-2">pass {passes[i]}</span>}
                   {a.tool && <span className="rounded bg-surface-2 px-1.5 font-mono text-[10.5px] text-ink-3">{a.tool}</span>}
                 </div>
                 <div className="mt-0.5 font-mono text-[12px] text-ink-2">{a.output}</div>
@@ -309,13 +320,20 @@ export function FeedbackCard({ r }: { r: QueryResponse }) {
   const [comment, setComment] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
   const [mode, setMode] = useState<"live" | "demo" | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit() {
     if (!rating) return;
     setState("sending");
-    const res = await sendFeedback({ requestId: r.requestId, rating, correctedValue: corrected ? Number(corrected) : undefined, comment: comment || undefined });
-    setMode(res.mode);
-    setState("sent");
+    setError(null);
+    try {
+      const res = await sendFeedback({ requestId: r.requestId, rating, correctedValue: corrected ? Number(corrected) : undefined, comment: comment || undefined });
+      setMode(res.mode);
+      setState("sent");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Feedback could not be saved");
+      setState("idle");
+    }
   }
 
   if (state === "sent") {
@@ -344,6 +362,7 @@ export function FeedbackCard({ r }: { r: QueryResponse }) {
             <Button onClick={submit} disabled={state === "sending"} size="sm" className="w-full">
               {state === "sending" ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Submit feedback
             </Button>
+            {error && <p className="text-[12px] text-critical">Not saved: {error}</p>}
           </>
         )}
       </CardBody>

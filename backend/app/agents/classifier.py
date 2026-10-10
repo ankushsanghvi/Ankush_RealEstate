@@ -44,10 +44,15 @@ SYSTEM = (
 def extract_regex(query: str) -> SubjectAttributes:
     q = query.lower().replace(",", "")
     attrs = SubjectAttributes()
+    # The subject is the first neighborhood mentioned ("Northridge Heights vs Old Town" → NridgHt);
+    # at the same position the longer name wins, so "Northridge Heights" beats "Northridge".
+    mentions = []
     for code, name in NEIGHBORHOOD_NAMES.items():
-        if re.search(rf"\b{re.escape(name.lower())}\b", q) or re.search(rf"\b{re.escape(code.lower())}\b", q):
-            attrs.neighborhood = code
-            break
+        for term in (name.lower(), code.lower()):
+            if m := re.search(rf"\b{re.escape(term)}\b", q):
+                mentions.append((m.start(), -len(term), code))
+    if mentions:
+        attrs.neighborhood = min(mentions)[2]
     if m := re.search(r"\b(\d{1,2})\s*-?\s*(bed|br\b|bedroom|bd\b)", q):
         attrs.bedrooms = int(m.group(1))
     if m := re.search(r"(?<![\d.])(\d{1,2})(?:\.5)?\s*-?\s*(bath|ba\b)", q):
@@ -67,8 +72,12 @@ def extract_regex(query: str) -> SubjectAttributes:
                 break
     if m := re.search(r"\b(\d{1,2})\s*-?\s*car", q):
         attrs.garageCars = int(m.group(1))
+    elif re.search(r"\bno garage\b", q):
+        attrs.garageCars = 0
     if m := re.search(r"(\d{3,5})\s*(sq\s?ft|sqft)?\s*(finished\s*)?basement", q):
         attrs.totalBsmtSF = int(m.group(1))
+    elif re.search(r"\bno basement\b", q):
+        attrs.totalBsmtSF = 0
     if m := re.search(r"(\d{4,6})\s*(sq\s?ft|sqft)\s*lot", q) or re.search(r"lot\s*(?:of|is)?\s*(\d{4,6})", q):
         attrs.lotArea = int(m.group(1))
     if m := re.search(r"(\d+(?:\.\d+)?)\s*acres?", q):

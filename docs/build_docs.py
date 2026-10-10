@@ -65,7 +65,7 @@ ENDPOINTS = [
      "Metadata filtering over the full record set. Body is a `QueryFilters` object; `limit` and `offset` are query parameters for paging.",
      {"neighborhoods": ["Veenker"], "minYearBuilt": 1990}, {"limit": 2, "offset": 0}),
     ("POST", "/api/v1/feedback", "Submit feedback (continuous-improvement loop)",
-     "Thumbs up/down, an optional corrected value and comment, joined to the original request by `requestId`. Corrected values automatically become evaluation cases in the next eval run.",
+     "Thumbs up/down, an optional corrected value and comment, joined to the original request by `requestId`. Corrected values automatically become evaluation cases in the next eval run. An unknown `requestId` returns 404 and nothing is stored.",
      "FEEDBACK", None),
     ("GET", "/api/v1/evaluation/latest", "Latest evaluation results",
      "Metrics, thresholds and pass rates from the most recent evaluation run, trend history, judge agreement, feedback counts and live latency percentiles. Backs the Evaluation dashboard.",

@@ -63,6 +63,9 @@ def run(write: bool = True, limit: int | None = None) -> dict:
     for fc in svc.feedback.corrected_cases():
         cases.append({"id": f"fb-{abs(hash(fc['query'])) % 10000}", "kind": "valuation", "query": fc["query"], "expected_value": fc["expected_value"], "expected_intent": "valuation", "source": "feedback"})
 
+    # Hold golden records out of the pricing model as well as the comparable pool.
+    svc.pricing.refit_excluding({c["source_id"] for c in cases if c.get("source_id")})
+
     rows = []
     for c in cases:
         t0 = time.perf_counter()

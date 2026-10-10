@@ -232,6 +232,7 @@ export function mockQuery(query: string, filters: QueryFilters = {}): QueryRespo
       confidence,
       method: "ensemble",
       pricePerSqft: Math.round(estimate / subject.grLivArea),
+      priceBasis: "Demo data modelled on historical Ames, Iowa sales 2006–2010; not adjusted to today's market.",
       narrative: `Weighted ${scored.length} prioritized comparables (${sameNbCount} in ${nb.name}) after appraisal-style adjustments for living area, quality, age and garage capacity. The gradient-boosted model independently predicts ${mlPred >= estimate ? "slightly above" : "slightly below"} the comparable-weighted figure; the ensemble leans on comparables where neighborhood coverage is strong.`,
     },
     prediction: {

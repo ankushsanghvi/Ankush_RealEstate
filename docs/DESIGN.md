@@ -261,12 +261,12 @@ graph with typed state is the better fit and keeps the system reproducible in ru
 | Model CV | Is the predictor sound? | 5-fold MAPE, R² |
 | DeepEval (LLM-graded) | Is the recommendation good? | Faithfulness, Answer Relevancy, Contextual Precision/Recall, Hallucination, custom ValuationMAPE |
 | Online judge + feedback | Is this answer good? | verdict per response; human corrections become new test cases |
-| pytest | Do components and failure paths behave? | 44 tests |
+| pytest | Do components and failure paths behave? | 64 tests |
 
 The golden set has 60 cases: 44 hold-out valuations generated from real records, with each subject excluded
-from its own comparables, plus 11 intent/retrieval and 5 guardrail cases. Current results: **MAPE 9.8 %,
-82 % range coverage, contextual precision 84 % / recall 91 %, 0 % hallucination, intent 98 %, guardrails
-100 %** (full detail in `docs/Evaluation_Report.pdf`).
+from its own comparables and from the pricing model's training data, plus 11 intent/retrieval and 5 guardrail
+cases. Current results: **MAPE 9.6 %, 80 % range coverage, contextual precision 91 % / recall 97 %, 0 %
+hallucination, intent 98 %, guardrails 100 %** (full detail in `docs/Evaluation_Report.pdf`).
 
 ## 8. Challenges and trade-offs
 

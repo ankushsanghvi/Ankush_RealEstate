@@ -17,7 +17,7 @@ and a DeepEval quality suite. It is exposed as a FastAPI microservice with a Nex
 | 4 | README | this file |
 | 5 | API documentation | [`docs/API_Documentation.pdf`](docs/API_Documentation.pdf) (source: [`docs/API_Documentation.md`](docs/API_Documentation.md)) · live Swagger at `/docs` |
 | 6 | Dataset details | [`docs/Dataset_Details.pdf`](docs/Dataset_Details.pdf) · sample data [`data/sample_data/`](data/sample_data/) |
-| 7 | Presentation deck | [`presentation/Project_Presentation.pptx`](presentation/Project_Presentation.pptx) · speaker script [`docs/PRESENTATION.md`](docs/PRESENTATION.md) |
+| 7 | Presentation deck | [`presentation/Project_Presentation.pdf`](presentation/Project_Presentation.pdf) · speaker script [`docs/PRESENTATION.md`](docs/PRESENTATION.md) |
 | 8 | Evaluation report | [`docs/Evaluation_Report.pdf`](docs/Evaluation_Report.pdf) · raw results [`backend/evals/results/`](backend/evals/results/) |
 | 9 | Test cases | [`backend/tests/`](backend/tests/) (64 pytest tests) · golden set [`backend/evals/golden_set.json`](backend/evals/golden_set.json) · UI run [`docs/testing/`](docs/testing/) |
 
@@ -275,7 +275,7 @@ recommended submission structure as follows:
 | `data/sample_data/` | [`data/sample_data/`](data/sample_data/) · full dataset [`backend/data/ames_housing.arff`](backend/data/ames_housing.arff) |
 | `docs/` | API documentation, dataset details, evaluation report, testing evidence |
 | `tests/` | [`backend/tests/`](backend/tests/) · evaluation suites in [`backend/evals/`](backend/evals/) |
-| `presentation/` | [`presentation/Project_Presentation.pptx`](presentation/Project_Presentation.pptx) |
+| `presentation/` | [`presentation/Project_Presentation.pdf`](presentation/Project_Presentation.pdf) |
 | front end | [`frontend/`](frontend/) (Next.js, approved in place of Streamlit) |
 | `requirements.txt` | [`requirements.txt`](requirements.txt) → `backend/requirements.txt` |
 

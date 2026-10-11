@@ -8,7 +8,7 @@ engineering judgement behind it. Leave 2 minutes for questions.
 - Backend running (`uvicorn app.main:app --port 8000`), frontend on :3000 in **live** mode (sidebar shows "live · Nms").
 - `ANTHROPIC_API_KEY` set if you want the LLM engine; the demo also works in rules mode — say so, it's a feature.
 - Browser tabs: `/` (home), `/app`, `/app/compare`, `/app/evaluation`, `http://localhost:8000/docs`.
-- `architecture/Architecture_Diagram.pdf` open in a viewer; `presentation/Project_Presentation.pptx` as the slide deck.
+- `architecture/Architecture_Diagram.pdf` open in a viewer; `presentation/Project_Presentation.pdf` as the slide deck.
 
 ## Timeline
 

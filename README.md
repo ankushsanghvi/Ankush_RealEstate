@@ -7,6 +7,12 @@ and a DeepEval quality suite. It is exposed as a FastAPI microservice with a Nex
 
 ![architecture](architecture/Architecture_Diagram.jpg)
 
+## Team details
+
+| Name | Employee ID | Email | Batch |
+|---|---|---|---|
+| Ankush Sanghavi | 82622 | ankush.sanghavi@prodapt.com | Batch 3, Prodapt University |
+
 ## Deliverables
 
 | # | Deliverable | File |
